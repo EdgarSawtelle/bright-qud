@@ -1,0 +1,39 @@
+[h1]Bright Qud[/h1]
+A bright, bold visual overhaul and quality-of-life mod, made on and for the Steam Deck (works on PC too).
+Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b]: no stats, creatures or items are edited and nothing is stored in your save, so you can turn it off at any time. Every helper has its own switch in Options → Mods.
+
+[h2]New look[/h2]
+[list]
+[*]Hand-drawn world tiles: ground, 3/4-view walls, water, plants, furniture, items
+[*]200+ characters and monsters redrawn in a "weird retro sci-fi" style
+[*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
+[*]Seed-generated colours are kept; tiles not redrawn yet get an automatic matching restyle
+[*]Choose your character's look; gentle idle animation
+[/list]
+
+[h2]Easier to read the map[/h2]
+[list]
+[*]Red / green rings under enemies and companions, health bars over hurt creatures
+[*]Ring under you that pulses red at low health
+[*]Items on the ground sparkle; gold corner on stairs and filled containers
+[*]Speech bubble on merchants and named characters (fades once you've talked)
+[*]Remembered areas clearly dimmer than what you see; coloured ground instead of black
+[*]Flames on burning things, no black squares behind gas, explosions or thrown items
+[*]World map: regions too dangerous for your level tinted orange / red
+[/list]
+
+[h2]Easier to read the menus[/h2]
+[list]
+[*]Clearer fonts: Clear mono or Readable (Atkinson Hyperlegible)
+[*]Interface colours: Qud teal, Tan parchment (light), Amber, Rust, Violet, Slate
+[*]Key stats at the top of look / hover descriptions (monster level, HP, AV/DV, attacks, mutations; item damage, armour, resistances)
+[*]Item comparison with what you wear, in green/red, in the inventory, when picking up and at merchants
+[*]Ability bar shows more abilities at once and explains the one you point at or select
+[*]Controls reminder (LT + View / F3) and an in-game legend of every marker
+[/list]
+
+[h2]Compatibility[/h2]
+Visual and UI patches only. Content mods work (their creatures and items get the automatic restyle). With other tile packs, whichever loads last wins per tile.
+
+Source, full feature list and bug reports: https://github.com/EdgarSawtelle/bright-qud
+Art CC BY-NC-SA 4.0, code MIT, fonts SIL OFL. Contains no game assets. Made by mverdide.
