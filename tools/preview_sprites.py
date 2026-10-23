@@ -50,6 +50,7 @@ def main():
     seen = set()
     for k, v in keys.items():
         name, kind = (v if isinstance(v, tuple) else (v, "object"))
+        kind = getattr(m, "KINDS", {}).get(name, kind)
         if name in seen:
             continue
         seen.add(name)

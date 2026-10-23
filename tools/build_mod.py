@@ -194,9 +194,14 @@ def targets(idx):
     for k in ("terrain/sw/talltree1", "terrain/sw/talltree2"):
         add(k, T2.witchwood_tree(), "tall", flip=k.endswith("2"), example="Witchwood Tree")
     # --- Agent-drawn batches (art/src/items3.py, kit3a.py, kit3b.py): (module, sprites, keys, humanoids) ---
-    for mod_name, sprites_attr, keys_attr, hum_attr in (("items3", "ITEMS3", "KEYS3", None),
+    batches = ((("items3", "ITEMS3", "KEYS3", None),
                                                         ("kit3a", "CREATURES3A", "KEYS3A", "HUMANOID3A"),
-                                                        ("kit3b", "CREATURES3B", "KEYS3B", "HUMANOID3B")):
+                                                        ("kit3b", "CREATURES3B", "KEYS3B", "HUMANOID3B"))
+                                                       + tuple((f"b3more_{i}", "SPRITES", "KEYS", "HUMANOID") for i in range(1, 9))
+               + tuple((f"items4_{i}", "SPRITES", "KEYS", None) for i in range(1, 9))
+               + tuple((f"fixtures_{i}", "SPRITES", "KEYS", None) for i in range(1, 4))
+               + tuple((f"terrain3_{i}", "SPRITES", "KEYS", None) for i in range(1, 5)))
+    for mod_name, sprites_attr, keys_attr, hum_attr in batches:
         if mod_name not in APPROVED_BATCHES:
             continue
         m = importlib.import_module(mod_name)
@@ -204,6 +209,7 @@ def targets(idx):
         humans = getattr(m, hum_attr, set()) if hum_attr else set()
         for k, v in keys.items():
             name, kind = v if isinstance(v, tuple) else (v, "object")
+            kind = getattr(m, "KINDS", {}).get(name, kind)
             if k in idx and k not in {x[0] for x in t} and name in sprites:
                 add(k, sprites[name], kind)
                 if name in humans:
