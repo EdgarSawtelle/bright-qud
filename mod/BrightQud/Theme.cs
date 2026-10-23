@@ -227,7 +227,7 @@ namespace BrightQud
         static void Postfix(Image __instance) => Theme.Apply(__instance);
     }
 
-    [HarmonyPatch(typeof(Image), nameof(Image.sprite), MethodType.Setter)]
+    [HarmonyPatch(typeof(Image), "set_sprite", new Type[] { typeof(Sprite) })]
     public static class ImageSpriteThemePatch
     {
         static void Postfix(Image __instance) => Theme.Apply(__instance);
