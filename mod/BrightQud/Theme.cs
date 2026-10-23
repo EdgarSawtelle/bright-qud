@@ -53,6 +53,7 @@ namespace BrightQud
         // canvas, so Image.OnEnable alone never notices an option change.
         public static void Tick()
         {
+            if (!Fonts.OnMainThread) return;
             if (Time.unscaledTime < nextTick) return;
             nextTick = Time.unscaledTime + 1f;
             try { Check(); }
@@ -67,6 +68,7 @@ namespace BrightQud
             {
                 current = choice;
                 active = Defs.TryGetValue(choice, out def);
+                Debug.Log("BrightQud theme option: '" + choice + "' active=" + active);
                 textures.Clear();
                 sprites.Clear();
                 ours.Clear();
@@ -158,6 +160,7 @@ namespace BrightQud
         public static void Apply(Image img)
         {
             if (img == null || busy) return;
+            Fonts.MarkMainThread();
             bool on = Check();
             busy = true;
             try
@@ -203,6 +206,7 @@ namespace BrightQud
         // Light theme: dark text (vertex colours are multiplied by the material's face colour).
         public static void Apply(TMP_Text t)
         {
+            if (!Fonts.OnMainThread) return;
             bool light = Light;
             var mat = t?.fontSharedMaterial;
             if (mat == null || !mat.HasProperty(FaceColor)) return;

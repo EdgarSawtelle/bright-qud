@@ -1143,7 +1143,8 @@ namespace BrightQud
     // In-game switches (mod Options.xml, "Mods" section). Read at most once per second.
     public static class Settings
     {
-        static int lastCheck = int.MinValue;
+        static int lastCheck;
+        static bool refreshed;
         static bool animation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
@@ -1152,8 +1153,11 @@ namespace BrightQud
 
         static void Refresh()
         {
+            // (lastCheck starts at MinValue: now - MinValue overflows to a negative number, which made
+            // this throttle skip every refresh on a machine with a long uptime.)
             int now = Environment.TickCount;
-            if (unchecked(now - lastCheck) < 1000) return;
+            if (refreshed && unchecked(now - lastCheck) < 1000) return;
+            refreshed = true;
             lastCheck = now;
             try
             {

@@ -45,10 +45,19 @@ namespace BrightQud
             : choice.EqualsNoCase("Readable") ? "AtkinsonHyperlegible-Regular.ttf" : null;
 
         // The font to use now, or null for the game's own.
+        static int mainThread = -1;
+
+        // Called from code that always runs on Unity's main thread.
+        public static void MarkMainThread() => mainThread = System.Threading.Thread.CurrentThread.ManagedThreadId;
+
+        public static bool OnMainThread => mainThread == System.Threading.Thread.CurrentThread.ManagedThreadId;
+
         public static TMP_FontAsset Current
         {
             get
             {
+                // Building the atlas off the main thread corrupts glyphs; wait for a main-thread call.
+                if (!OnMainThread) return loaded == Settings.Font ? asset : null;
                 string choice = Settings.Font;
                 if (choice != loaded)
                 {
@@ -67,7 +76,9 @@ namespace BrightQud
                             {
                                 asset.name = "BrightQud " + choice;
                                 asset.isMultiAtlasTexturesEnabled = false;
-                                asset.TryAddCharacters(Prefill);
+                                asset.TryAddCharacters(Prefill, out string missing);
+                                Debug.Log("BrightQud font '" + choice + "': " + asset.characterLookupTable.Count
+                                    + " characters, " + asset.atlasTextureCount + " atlas, missing [" + missing + "]");
                             }
                             else MetricsManager.LogError("BrightQud.Fonts: could not load " + path);
                         }
@@ -92,7 +103,7 @@ namespace BrightQud
 
         public static void Apply(TMP_Text t)
         {
-            if (t == null) return;
+            if (t == null || !OnMainThread) return;
             var font = Current;
             if (font == null)
             {
@@ -141,7 +152,7 @@ namespace BrightQud
     {
         static void Postfix(TextMeshProUGUI __instance)
         {
-            try { Fonts.Apply(__instance); Theme.Apply(__instance); }
+            try { Fonts.MarkMainThread(); Fonts.Apply(__instance); Theme.Apply(__instance); }
             catch (Exception e) { MetricsManager.LogException("BrightQud.Fonts.OnEnable", e); }
         }
     }
@@ -182,6 +193,7 @@ namespace BrightQud
         {
             try
             {
+                Fonts.MarkMainThread();
                 Theme.Tick();
                 if (__instance.ButtonArea == null) return;
                 int w = Options.AbilityBarMode == 1 ? -1 : Width();
