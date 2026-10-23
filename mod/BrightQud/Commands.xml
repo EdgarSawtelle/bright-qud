@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<commands>
+  <command ID="CmdBrightQudControls" DisplayText="Bright Qud: controls reminder" Category="Adventuring" Layer="Adventure" Auto="Down">
+    <keyboardBind Key="F3"/>
+    <gamepadBind Alt="true" Button="select"/>
+  </command>
+</commands>

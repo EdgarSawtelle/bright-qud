@@ -1,0 +1,14 @@
+.venv/
+reference/
+build/
+__pycache__/
+.tools/
+tools/cscheck/bin/
+tools/cscheck/obj/
+tools/patchlint/bin/
+tools/patchlint/obj/
+mockups/*_compare.png
+mockups/*_originals.png
+docs/b3_worklists/
+mockups/*before_after*.png
+mockups/joppa_after_fullscreen.png

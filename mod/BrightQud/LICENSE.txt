@@ -1,0 +1,15 @@
+Bright Qud - (c) 2026 mverdide
+
+Art (all images in Textures/ and the pixel-art sources they are built from):
+  Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+  Free to use, share and adapt with credit; no commercial use; share adaptations alike.
+
+Code (BrightQud.cs, Generated.cs, Options.xml, Commands.xml):
+  MIT License. Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software, to deal in the software without restriction, including the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, provided the above copyright notice and this permission
+  notice are included. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+Caves of Qud is (c) Freehold Games. This mod contains no game assets; it reads the game's own
+tiles at runtime from the player's installation.
