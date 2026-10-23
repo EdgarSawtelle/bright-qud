@@ -34,7 +34,7 @@ CR, S, IS = K.CREATURES, T.SPRITES, IT.ITEMS
 
 # Tiles drawn on the HUMAN kit layout: mutation overlays line up with these.
 # Agent-drawn art modules that passed review (only these are built).
-APPROVED_BATCHES = {"items3", "kit3a", "kit3b"}
+APPROVED_BATCHES = {"items3", "kit3a", "kit3b", "items4_7", "items4_6", "items4_5", "items4_8", "b3more_4", "items4_3", "b3more_8", "b3more_5", "items4_4", "b3more_6", "b3more_7", "b3more_2", "items4_2", "items4_1", "b3more_1", "b3more_3"}
 # B3 character restyle (docs/B3_RESTYLE_BRIEF.md): modules whose OVERRIDES replace the old sprites.
 # b3kit also replaces the player looks and mutation overlays.
 B3_BATCHES = ["b3kit", "b3_castes", "b3_beasts", "b3_odd", "b3_deep", "b3_wilds", "b3_people"]
