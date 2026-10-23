@@ -4,10 +4,10 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 
 [h2]New look[/h2]
 [list]
-[*]New world tiles: ground, 3/4-view walls, water, plants, furniture, items
-[*]200+ characters and monsters redrawn in a "weird retro sci-fi" style
+[*]Every creature, character, item, piece of furniture and terrain tile the game uses is replaced: about 3,900 tiles, world map included
+[*]Characters and monsters in a "weird retro sci-fi" style; 3/4-view walls, water, plants and furniture
 [*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
-[*]Seed-generated colours are kept; tiles not redrawn yet get an automatic matching restyle
+[*]Seed-generated colours are kept; tiles from other mods get an automatic matching restyle
 [*]Choose your character's look; gentle idle animation
 [/list]
 
