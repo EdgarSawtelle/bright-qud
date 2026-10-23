@@ -131,7 +131,7 @@ namespace BrightQud
     {
         static void Postfix(UITextSkin __instance)
         {
-            try { Fonts.Apply(__instance.GetComponent<TextMeshProUGUI>()); }
+            try { var t = __instance.GetComponent<TextMeshProUGUI>(); Fonts.Apply(t); Theme.Apply(t); }
             catch (Exception e) { MetricsManager.LogException("BrightQud.Fonts.Apply", e); }
         }
     }
@@ -141,7 +141,7 @@ namespace BrightQud
     {
         static void Postfix(TextMeshProUGUI __instance)
         {
-            try { Fonts.Apply(__instance); }
+            try { Fonts.Apply(__instance); Theme.Apply(__instance); }
             catch (Exception e) { MetricsManager.LogException("BrightQud.Fonts.OnEnable", e); }
         }
     }

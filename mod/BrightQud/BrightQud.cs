@@ -1148,7 +1148,7 @@ namespace BrightQud
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
             abilityHelp = true, compareItems = true;
-        static string playerLook = null, font = "Clear mono", abilityBar = "More";
+        static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
 
         static void Refresh()
         {
@@ -1176,6 +1176,7 @@ namespace BrightQud
                 compareItems = XRL.UI.Options.GetOption("OptionBrightQudCompareItems", "Yes").EqualsNoCase("Yes");
                 font = XRL.UI.Options.GetOption("OptionBrightQudFont", "Clear mono") ?? "Game default";
                 abilityBar = XRL.UI.Options.GetOption("OptionBrightQudAbilityBar", "More") ?? "Game default";
+                uiTheme = XRL.UI.Options.GetOption("OptionBrightQudTheme", "Qud teal") ?? "Qud teal";
                 string look = XRL.UI.Options.GetOption("OptionBrightQudPlayerLook", "Game default");
                 playerLook = look.IsNullOrEmpty() || look.EqualsNoCase("Game default") ? null
                     : "brightqudlook/" + look.ToLowerInvariant();
@@ -1207,6 +1208,8 @@ namespace BrightQud
         public static string Font { get { Refresh(); return font; } }
         // "Game default", "More" or "Most" abilities per page.
         public static string AbilityBar { get { Refresh(); return abilityBar; } }
+        // "Qud teal" (game colours) or a Theme.cs theme name.
+        public static string UiTheme { get { Refresh(); return uiTheme; } }
 
         // Tile key of the chosen player look, or null for the game's own tile.
         public static string PlayerLook { get { Refresh(); return playerLook; } }

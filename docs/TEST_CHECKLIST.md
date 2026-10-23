@@ -78,3 +78,7 @@ For each item, take a screenshot (STEAM + R1) when something looks off and note 
     what it does; it disappears after a few seconds.
 49. New B3 characters: snapjaws (hyena-folk), Joppa villagers, animals, robots, plants with maws.
 50. Mutations on a B3 character: horns, wings, extra arms... sit in the right place.
+51. Item comparison: inventory, pick-up list and merchant list show [AV +1 ...] / [dmg +1.5] /
+    [free slot] after weapons, armor and shields; looking at one shows "Compared with your ...".
+52. Interface colours (Options → Mods): Tan parchment / Amber / Rust / Violet / Slate change menu
+    frames and panels, item icons keep their colours; back to "Qud teal" restores the game look.
