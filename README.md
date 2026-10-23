@@ -68,7 +68,7 @@ Every helper below has its own switch in **Options → Mods**.
 | Controls reminder (LT + View) | Amber interface colours and the Clear mono font |
 
 ## Install
-- **Steam Workshop**: coming soon.
+- **Steam Workshop**: https://steamcommunity.com/sharedfiles/filedetails/?id=3825185564 (subscribe, then enable it in the Mods menu).
 - **Manually**: copy the `mod/BrightQud` folder into your Caves of Qud mods folder, then enable
   "Bright Qud" in the game's Mods menu and restart.
   - Linux / Steam Deck: `~/.config/unity3d/Freehold Games/CavesOfQud/Mods/`
