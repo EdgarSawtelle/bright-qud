@@ -40,7 +40,7 @@ Every helper below has its own switch in **Options → Mods**.
 | Clear memory | remembered areas (out of sight) are clearly dimmer than what you see now |
 | Coloured ground | real ground colours instead of black |
 | Fire and effects | flames drawn on burning things; no black squares behind gas, explosions or thrown items |
-| World map danger | regions too dangerous for your level are tinted orange (hard) or red (deadly) |
+| World map danger | regions too dangerous for your level are tinted orange (hard) or red (deadly); look at a region to see its level. World-map colours are toned down. |
 
 ### Easier to read the menus
 - **Clearer font**: *Clear mono* (detailed and aligned) or *Readable* (Atkinson Hyperlegible, made
