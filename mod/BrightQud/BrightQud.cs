@@ -1064,7 +1064,12 @@ namespace BrightQud
             try { Gear(o, melee, ref ranged); } catch (Exception e) { MetricsManager.LogException("BrightQud.LookStats.Gear", e); }
             if (melee.Count > 0) sb.Append("\n{{R|Attacks:}} ").Append(string.Join(", ", melee));
             if (ranged != null) sb.Append("\n{{R|Ranged:}} ").Append(ranged);
-            try { Mutations(o, sb); } catch (Exception e) { MetricsManager.LogException("BrightQud.LookStats.Mutations", e); }
+            try
+            {
+                if (Settings.ExplainPowers) Explain.Append(o, sb);
+                else Mutations(o, sb);
+            }
+            catch (Exception e) { MetricsManager.LogException("BrightQud.LookStats.Mutations", e); }
             return sb.ToString();
         }
 
@@ -1151,7 +1156,7 @@ namespace BrightQud
         static bool animation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
-            abilityHelp = true, compareItems = true;
+            abilityHelp = true, compareItems = true, explainPowers = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
 
         static void Refresh()
@@ -1181,6 +1186,7 @@ namespace BrightQud
                 lookStats = XRL.UI.Options.GetOption("OptionBrightQudLookStats", "Yes").EqualsNoCase("Yes");
                 abilityHelp = XRL.UI.Options.GetOption("OptionBrightQudAbilityHelp", "Yes").EqualsNoCase("Yes");
                 compareItems = XRL.UI.Options.GetOption("OptionBrightQudCompareItems", "Yes").EqualsNoCase("Yes");
+                explainPowers = XRL.UI.Options.GetOption("OptionBrightQudExplainPowers", "Yes").EqualsNoCase("Yes");
                 font = XRL.UI.Options.GetOption("OptionBrightQudFont", "Clear mono") ?? "Game default";
                 abilityBar = XRL.UI.Options.GetOption("OptionBrightQudAbilityBar", "More") ?? "Game default";
                 uiTheme = XRL.UI.Options.GetOption("OptionBrightQudTheme", "Qud teal") ?? "Qud teal";
@@ -1209,6 +1215,7 @@ namespace BrightQud
         public static bool EffectGround { get { Refresh(); return effectGround; } }
         public static bool DangerTint { get { Refresh(); return dangerTint; } }
         public static bool LookStats { get { Refresh(); return lookStats; } }
+        public static bool ExplainPowers { get { Refresh(); return explainPowers; } }
         public static bool AbilityHelp { get { Refresh(); return abilityHelp; } }
         public static bool CompareItems { get { Refresh(); return compareItems; } }
         // "Game default", "Clear mono" or "Readable" (UiTweaks.cs Fonts).

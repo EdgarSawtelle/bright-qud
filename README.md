@@ -50,6 +50,9 @@ Every helper below has its own switch in **Options → Mods**.
 - **Key stats at a glance**: looking at or hovering over things puts a short summary on top of the
   description.
   - Monsters: level, HP, AV/DV, attacks with damage, ranged weapon, mutations.
+  - Each mutation and fight skill gets a one-line explanation, red if it's dangerous to you
+    (e.g. `Freezing Ray - ranged cold beam, can freeze you solid`), plus a status line
+    (on fire, stunned...).
   - Items: damage, penetration, armour, resistances, charge, liquid contents, weight.
   - Unidentified items stay unspoiled.
 - **Item comparison**: weapons, armour and shields show the difference with what you wear in that

@@ -6,6 +6,7 @@ so one design serves every rock type the seed picks (shale, mudroot, sandstone, 
 """
 import math
 import random
+import zlib
 
 from tiles import _bits, _grid, _rows
 
@@ -284,7 +285,8 @@ def alias_variants():
 
 def painted_wall(material, mask="00000000", seed=1):
     """3/4 wall in a role-colored material. Top = foreground light/mid, face = mid/dark."""
-    rnd = random.Random(hash((material, mask, seed)) & 0xFFFF)
+    # (crc32, not hash(): string hashes change every run, so every build redrew the walls.)
+    rnd = random.Random(zlib.crc32(f"{material}|{mask}|{seed}".encode()) & 0xFFFF)
     m = _bits(mask)
     face = not m["s"]
     g = _grid("2")

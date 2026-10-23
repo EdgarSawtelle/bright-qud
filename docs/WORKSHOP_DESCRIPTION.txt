@@ -27,6 +27,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Clearer fonts: Clear mono or Readable (Atkinson Hyperlegible)
 [*]Interface colours: Qud teal, Tan parchment (light), Amber, Rust, Violet, Slate
 [*]Key stats at the top of look / hover descriptions (monster level, HP, AV/DV, attacks, mutations; item damage, armour, resistances)
+[*]Mutations and fight skills explained in one line each when you look at a creature (dangerous ones in red), plus its status (on fire, stunned...)
 [*]Item comparison with what you wear, in green/red, in the inventory, when picking up and at merchants
 [*]Ability bar shows more abilities at once and explains the one you point at or select
 [*]Controls reminder (LT + View / F3) and an in-game legend of every marker
