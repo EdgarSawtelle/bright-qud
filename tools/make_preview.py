@@ -1,3 +1,5 @@
+# NOTE: superseded. The Workshop preview is now a crop of an in-game screenshot (2026-10-23);
+# running this script would overwrite it with the old art.
 """Build mod/BrightQud/preview.png (512x512) from the mod's own tiles only.
 
 Never reads from reference/ (original game art). Run with:
