@@ -4,7 +4,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 
 [h2]New look[/h2]
 [list]
-[*]Hand-drawn world tiles: ground, 3/4-view walls, water, plants, furniture, items
+[*]New world tiles: ground, 3/4-view walls, water, plants, furniture, items
 [*]200+ characters and monsters redrawn in a "weird retro sci-fi" style
 [*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
 [*]Seed-generated colours are kept; tiles not redrawn yet get an automatic matching restyle

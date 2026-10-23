@@ -12,7 +12,7 @@ Every helper below has its own switch in **Options → Mods**.
 ## What it does
 
 ### A new look
-- **Hand-drawn tiles** for the world: ground, walls in 3/4 view, water, plants, furniture and items.
+- **New tiles** for the world: ground, walls in 3/4 view, water, plants, furniture and items.
 - **Characters and monsters** redrawn in a "weird retro sci-fi" style. Snapjaws are hyena-folk,
   villagers have recognisable silhouettes, robots are chrome with glowing lights, and the hostile
   plants have maws.

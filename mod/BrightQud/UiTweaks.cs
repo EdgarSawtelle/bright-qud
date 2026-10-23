@@ -252,6 +252,8 @@ namespace BrightQud
         static string hovered;            // command of the button under the pointer
         static string shown;              // command currently in the panel
         static float showUntil;
+        static long shownTurn;
+        static int shownFrame;
         static readonly HashSet<int> hooked = new HashSet<int>();
 
         public static void Hook(AbilityBarButton button)
@@ -259,7 +261,7 @@ namespace BrightQud
             if (!hooked.Add(button.GetInstanceID())) return;
             var trigger = button.gameObject.GetComponent<EventTrigger>() ?? button.gameObject.AddComponent<EventTrigger>();
             var enter = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
-            enter.callback.AddListener(_ => hovered = button.command);
+            enter.callback.AddListener(_ => { hovered = button.command; shown = null; });
             var exit = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
             exit.callback.AddListener(_ => { if (hovered == button.command) hovered = null; });
             trigger.triggers.Add(enter);
@@ -270,7 +272,6 @@ namespace BrightQud
         {
             var entry = bar.currentlySelectedAbility;
             if (entry == null || !Settings.AbilityHelp) return;
-            showUntil = Time.unscaledTime + 5f;
             Show(bar, entry);
         }
 
@@ -286,20 +287,28 @@ namespace BrightQud
             return null;
         }
 
+        // The panel closes after a few seconds, when a turn passes (moving, using an ability), or on
+        // any other key or click; pointing at a button again shows it again.
         public static void Update(AbilityBar bar)
         {
             bool onStage = GameManager.Instance?.CurrentGameView == "Stage";
             if (!Settings.AbilityHelp || !onStage)
             {
+                hovered = null;
                 Hide();
                 return;
             }
-            if (hovered != null)
+            if (hovered != null && hovered != shown) Show(bar, Find(bar, hovered));
+            if (shown == null) return;
+            bool input = false;
+            if (Time.frameCount > shownFrame + 1)
+                try { input = Input.anyKeyDown || Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1); }
+                catch (InvalidOperationException) { }
+            if (input || The.CurrentTurn != shownTurn || Time.unscaledTime > showUntil)
             {
-                if (hovered != shown) Show(bar, Find(bar, hovered));
-                return;
+                hovered = null;
+                Hide();
             }
-            if (Time.unscaledTime > showUntil) Hide();
         }
 
         static void Hide()
@@ -348,6 +357,9 @@ namespace BrightQud
             sb.Append('\n').Append(desc.IsNullOrEmpty() ? "{{K|No description. Open the abilities screen for details.}}" : desc);
             text.text = RTF.FormatToRTF(sb.ToString());
             shown = entry.Command;
+            shownTurn = The.CurrentTurn;
+            shownFrame = Time.frameCount;
+            showUntil = Time.unscaledTime + 6f;
 
             // Sit just above the ability buttons, as wide as the bar.
             var rt = (RectTransform)panel.transform;
