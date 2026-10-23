@@ -351,12 +351,14 @@ def write_options(looks):
   <option ID="OptionBrightQudTheme" DisplayText="Bright Qud: interface colours (Tan parchment = light, experimental)" Category="Mods" Type="Combo" Values="Qud teal,Tan parchment,Amber,Rust,Violet,Slate" Default="Qud teal"></option>
   <option ID="OptionBrightQudAbilityBar" DisplayText="Bright Qud: abilities shown at once on the ability bar" Category="Mods" Type="Combo" Values="Game default,More,Most" Default="More"></option>
   <option ID="OptionBrightQudAbilityHelp" DisplayText="Bright Qud: explain abilities when pointed at or selected" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudControls"DisplayText="Bright Qud: controls reminder (in game: LT + View)" Category="Mods" Type="Button" OnClick="BrightQud.Controls.Show"></option>
+  <option ID="OptionBrightQudControls" DisplayText="Bright Qud: controls reminder (in game: LT + View)" Category="Mods" Type="Button" OnClick="BrightQud.Controls.Show"></option>
   <option ID="OptionBrightQudLegend" DisplayText="Bright Qud: show legend (what the markers mean)" Category="Mods" Type="Button" OnClick="BrightQud.Legend.Show"></option>
 </options>
 '''
     with open(os.path.join(MOD, "Options.xml"), "w") as fh:
         fh.write(src)
+    import xml.etree.ElementTree as ET
+    ET.fromstring(src)  # a malformed Options.xml silently drops every option after the error
 
 
 def write_generated(built):

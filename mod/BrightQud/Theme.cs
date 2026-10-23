@@ -205,12 +205,36 @@ namespace BrightQud
             }
         }
 
+        // One log line per theme change: what the menus are made of (for tuning IsChrome / Map).
+        static void Report(Image[] images)
+        {
+            if (!active) return;
+            int chrome = 0, flat = 0;
+            var other = new Dictionary<string, int>();
+            var colors = new Dictionary<string, int>();
+            foreach (var img in images)
+            {
+                var s = img.sprite;
+                if (s != null && ours.Contains(s.GetInstanceID())) chrome++;
+                else if (s == null) { flat++; string c = ColorUtility.ToHtmlStringRGBA(img.color); colors[c] = colors.TryGetValue(c, out int n) ? n + 1 : 1; }
+                else { string k = s.name + "@" + (s.texture != null ? s.texture.name : "?"); other[k] = other.TryGetValue(k, out int n) ? n + 1 : 1; }
+            }
+            var sb = new System.Text.StringBuilder("BrightQud theme '" + current + "': " + images.Length + " images, "
+                + chrome + " recoloured sprites, " + flat + " flat. Other sprites: ");
+            foreach (var kv in other) sb.Append(kv.Key).Append(" x").Append(kv.Value).Append("; ");
+            sb.Append(" Flat colours: ");
+            foreach (var kv in colors) sb.Append(kv.Key).Append(" x").Append(kv.Value).Append("; ");
+            Debug.Log(sb.ToString());
+        }
+
         static void RestyleAll()
         {
             try
             {
-                foreach (var img in UnityEngine.Object.FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                var images = UnityEngine.Object.FindObjectsByType<Image>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                foreach (var img in images)
                     Apply(img);
+                Report(images);
                 foreach (var t in UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                     Apply(t);
             }

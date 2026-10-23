@@ -3,7 +3,7 @@
   "Title": "Bright Qud",
   "Author": "mverdide",
   "Description": "A bright, bold visual overhaul: thick outlines, saturated colors, caricature characters and a clear look for what you can and can't walk through. Plus optional map helpers (threat rings, health bars, markers, legend, controls reminder), each toggleable in Options > Mods. Tiles are recolored at runtime with the game's own seed colors.",
-  "version": "0.16.0",
+  "version": "0.16.1",
   "Tags": ["Graphics", "UI"],
   "PreviewImage": "preview.png"
 }
