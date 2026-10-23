@@ -200,6 +200,7 @@ namespace BrightQud
                 if (w > 0 && (w != GameWidth || lastWidth != GameWidth)) Resize(__instance.ButtonArea, w);
                 lastWidth = w > 0 ? w : GameWidth;
                 AbilityHelp.Update(__instance);
+                QuestBanner.Update(__instance.ButtonArea.GetComponentInChildren<AbilityBarButton>(true)?.Text?.font);
             }
             catch (Exception e)
             {

@@ -755,6 +755,7 @@ namespace BrightQud
         static readonly string[,] Rows =
         {
             { "", "{{W|EXPLORING}}" },
+            { "CmdBrightQudQuests", "Quests: your quests nearest first; pick one to follow (banner on screen)" },
             { "CmdAutoExplore", "Autoexplore: walk to unexplored places, stops when something shows up" },
             { "CmdMoveToPointOfInterest", "Go to a point of interest: stairs, buildings, people you've found here" },
             { "CmdMoveToEdge", "Walk to the edge of the zone (to leave it)" },
@@ -848,10 +849,14 @@ namespace BrightQud
     {
         static bool Prefix(XRL.World.GameObject Actor, string Command, ref bool __result)
         {
-            if (Command != Controls.Command) return true;
+            if (Command != Controls.Command && Command != Quests.Command) return true;
             try
             {
-                if (Actor != null && Actor.IsPlayer()) Controls.ShowFromGame();
+                if (Actor != null && Actor.IsPlayer())
+                {
+                    if (Command == Quests.Command) Quests.ShowFromGame();
+                    else Controls.ShowFromGame();
+                }
             }
             catch (Exception e)
             {
@@ -869,7 +874,7 @@ namespace BrightQud
     {
         static void Postfix(string AbilityCommand, ref bool __result)
         {
-            if (AbilityCommand == Controls.Command) __result = true;
+            if (AbilityCommand == Controls.Command || AbilityCommand == Quests.Command) __result = true;
         }
     }
 
@@ -1156,7 +1161,7 @@ namespace BrightQud
         static bool animation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
-            abilityHelp = true, compareItems = true, explainPowers = true;
+            abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
 
         static void Refresh()
@@ -1187,6 +1192,7 @@ namespace BrightQud
                 abilityHelp = XRL.UI.Options.GetOption("OptionBrightQudAbilityHelp", "Yes").EqualsNoCase("Yes");
                 compareItems = XRL.UI.Options.GetOption("OptionBrightQudCompareItems", "Yes").EqualsNoCase("Yes");
                 explainPowers = XRL.UI.Options.GetOption("OptionBrightQudExplainPowers", "Yes").EqualsNoCase("Yes");
+                questBanner = XRL.UI.Options.GetOption("OptionBrightQudQuestBanner", "Yes").EqualsNoCase("Yes");
                 font = XRL.UI.Options.GetOption("OptionBrightQudFont", "Clear mono") ?? "Game default";
                 abilityBar = XRL.UI.Options.GetOption("OptionBrightQudAbilityBar", "More") ?? "Game default";
                 uiTheme = XRL.UI.Options.GetOption("OptionBrightQudTheme", "Qud teal") ?? "Qud teal";
@@ -1216,6 +1222,7 @@ namespace BrightQud
         public static bool DangerTint { get { Refresh(); return dangerTint; } }
         public static bool LookStats { get { Refresh(); return lookStats; } }
         public static bool ExplainPowers { get { Refresh(); return explainPowers; } }
+        public static bool QuestBanner { get { Refresh(); return questBanner; } }
         public static bool AbilityHelp { get { Refresh(); return abilityHelp; } }
         public static bool CompareItems { get { Refresh(); return compareItems; } }
         // "Game default", "Clear mono" or "Readable" (UiTweaks.cs Fonts).

@@ -4,4 +4,8 @@
     <keyboardBind Key="F3"/>
     <gamepadBind Alt="true" Button="select"/>
   </command>
+  <command ID="CmdBrightQudQuests" DisplayText="Bright Qud: quests (nearest first, pick one to follow)" Category="Adventuring" Layer="Adventure" Auto="Down">
+    <keyboardBind Key="F4"/>
+    <gamepadBind Alt="true" Button="leftStickPress"/>
+  </command>
 </commands>

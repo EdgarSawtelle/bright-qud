@@ -17,6 +17,7 @@
   <option ID="OptionBrightQudEffectGround" DisplayText="Bright Qud: ground instead of black squares behind effect tiles" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudDangerTint" DisplayText="Bright Qud: world map tints regions too dangerous for your level (orange/red)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudLookStats" DisplayText="Bright Qud: key stats at the top of look / hover descriptions" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudQuestBanner" DisplayText="Bright Qud: quest banner (follow a quest from the Quests list: LT + left stick click)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudExplainPowers" DisplayText="Bright Qud: explain mutations and skills when looking" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudFont" DisplayText="Bright Qud: text font (Clear mono = detailed and aligned, Readable = easiest to read)" Category="Mods" Type="Combo" Values="Game default,Clear mono,Readable" Default="Clear mono"></option>
   <option ID="OptionBrightQudTheme" DisplayText="Bright Qud: interface colours (Tan parchment = light, experimental)" Category="Mods" Type="Combo" Values="Qud teal,Tan parchment,Amber,Rust,Violet,Slate" Default="Qud teal"></option>

@@ -55,6 +55,9 @@ Every helper below has its own switch in **Options → Mods**.
     (on fire, stunned...).
   - Items: damage, penetration, armour, resistances, charge, liquid contents, weight.
   - Unidentified items stay unspoiled.
+- **Quest helper**: LT + left stick click (or F4) lists your quests, nearest first, with the next
+  step and roughly where it is ("3 regions NE"). Pick one to follow: a small banner under the status
+  bar keeps showing what to do next. Nothing is stored in your save.
 - **Item comparison**: weapons, armour and shields show the difference with what you wear in that
   slot, in green (better) or red (worse), e.g. `[AV +1 DV -1]` or `[dmg +1.5]`. It works in the
   inventory, when picking things up, and at merchants. The description adds a
