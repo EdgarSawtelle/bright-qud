@@ -26,8 +26,11 @@ namespace BrightQud
             var player = The.Player;
             if (item == null || player == null || !Settings.CompareItems || !item.Understood()) return false;
             if (item.Equipped == player) return false;
-            if (!item.HasPart<MeleeWeapon>() && !item.HasPart<Armor>() && !item.HasPart<Shield>()
-                && !item.HasPart<MissileWeapon>()) return false;
+            // Only real gear: everything has an improvised MeleeWeapon part (food, scrap...).
+            string cat = item.GetInventoryCategory() ?? "";
+            bool gear = item.HasPart<Armor>() || item.HasPart<Shield>() || cat == "Melee Weapons"
+                || cat == "Missile Weapons" || cat == "Armor" || cat == "Shields";
+            if (!gear) return false;
             var part = player.getComparisonBodypart(item);
             if (part == null) return false;
             slot = part.Name;
@@ -103,7 +106,8 @@ namespace BrightQud
                 if (current == null || current.HasTag("NaturalGear") && !item.HasPart<MeleeWeapon>())
                     return "{{G|[free slot]}}";
                 var d = Diffs(item, current);
-                return d.Count == 0 ? "{{K|[same]}}" : "{{K|[}}" + string.Join(" ", d) + "{{K|]}}";
+                if (d.Count == 0) return item.HasPart<MissileWeapon>() ? null : "{{K|[same]}}";
+                return "{{K|[}}" + string.Join(" ", d) + "{{K|]}}";
             }
             catch (Exception e)
             {

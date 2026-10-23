@@ -131,7 +131,7 @@ namespace BrightQud
     {
         static void Postfix(UITextSkin __instance)
         {
-            try { var t = __instance.GetComponent<TextMeshProUGUI>(); Fonts.Apply(t); Theme.Apply(t); }
+            try { Theme.Tick(); var t = __instance.GetComponent<TextMeshProUGUI>(); Fonts.Apply(t); Theme.Apply(t); }
             catch (Exception e) { MetricsManager.LogException("BrightQud.Fonts.Apply", e); }
         }
     }
@@ -182,6 +182,7 @@ namespace BrightQud
         {
             try
             {
+                Theme.Tick();
                 if (__instance.ButtonArea == null) return;
                 int w = Options.AbilityBarMode == 1 ? -1 : Width();
                 if (w > 0 && (w != GameWidth || lastWidth != GameWidth)) Resize(__instance.ButtonArea, w);

@@ -1280,7 +1280,7 @@ namespace BrightQud
             if (!pendingExplored) return;
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
             if (memory) hud = 0;
-            // Idle animation, NecroDancer-style: creatures bob on a shared beat (~1 per second).
+            // Idle animation, creatures bob on a shared beat (~1 per second).
             int beat = (XRL.Core.XRLCore.CurrentFrame / 31) % 2;
             // Burning: flames drawn around the object instead of a flickering yellow/black square;
             // the object keeps its own colors.

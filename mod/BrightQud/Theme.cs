@@ -46,6 +46,19 @@ namespace BrightQud
 
         public static bool Light => Check() && def.Light;
 
+        static readonly int FaceColor = Shader.PropertyToID("_FaceColor");
+        static float nextTick;
+
+        // Called every frame from always-running UI code: menus are shown/hidden by toggling their
+        // canvas, so Image.OnEnable alone never notices an option change.
+        public static void Tick()
+        {
+            if (Time.unscaledTime < nextTick) return;
+            nextTick = Time.unscaledTime + 1f;
+            try { Check(); }
+            catch (Exception e) { MetricsManager.LogException("BrightQud.Theme.Tick", e); }
+        }
+
         // Re-reads the option; on change re-themes everything on screen.
         static bool Check()
         {
@@ -190,17 +203,17 @@ namespace BrightQud
         // Light theme: dark text (vertex colours are multiplied by the material's face colour).
         public static void Apply(TMP_Text t)
         {
-            var mat = t?.fontSharedMaterial;
-            if (mat == null || !mat.HasProperty(ShaderUtilities.ID_FaceColor)) return;
             bool light = Light;
+            var mat = t?.fontSharedMaterial;
+            if (mat == null || !mat.HasProperty(FaceColor)) return;
             if (light && !origFace.ContainsKey(mat))
             {
-                origFace[mat] = mat.GetColor(ShaderUtilities.ID_FaceColor);
-                mat.SetColor(ShaderUtilities.ID_FaceColor, new Color(0.22f, 0.17f, 0.12f, 1f));
+                origFace[mat] = mat.GetColor(FaceColor);
+                mat.SetColor(FaceColor, new Color(0.22f, 0.17f, 0.12f, 1f));
             }
             else if (!light && origFace.TryGetValue(mat, out var face))
             {
-                mat.SetColor(ShaderUtilities.ID_FaceColor, face);
+                mat.SetColor(FaceColor, face);
                 origFace.Remove(mat);
             }
         }
