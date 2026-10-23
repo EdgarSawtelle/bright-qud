@@ -2,8 +2,8 @@
 //
 // The game's menus are teal: frame/background sprites (polat-frame*, panelBgTile, ...) and flat
 // teal Image colours. A theme remaps every teal-ish colour (hue 140-215°) to its own hue; the light
-// "Tan parchment" theme also flips brightness (dark panels become light) and darkens all text through
-// the text materials' face colour so it stays readable. Item/creature icons are not teal UI art and
+// "Tan parchment" theme also flips brightness (dark panels become light) and recolours every text
+// mesh to dark ink so it stays readable. Item/creature icons are not teal UI art and
 // are left alone (only sprites whose name looks like UI chrome are recoloured).
 //
 // Recoloured sprites are copies: the texture is read back through a RenderTexture (game textures are
@@ -36,17 +36,15 @@ namespace BrightQud
         static bool active;
         static readonly Dictionary<int, Texture2D> textures = new Dictionary<int, Texture2D>();
         static readonly Dictionary<int, Sprite> sprites = new Dictionary<int, Sprite>();
-        static readonly HashSet<int> ours = new HashSet<int>();
+        // Our themed copy -> the game's sprite (kept across theme changes).
+        static readonly Dictionary<int, Sprite> originalOf = new Dictionary<int, Sprite>();
         // Original values, so switching back to "Qud teal" restores them.
-        static readonly Dictionary<int, Sprite> origSprite = new Dictionary<int, Sprite>();
         static readonly Dictionary<int, Color> origColor = new Dictionary<int, Color>();
         static readonly Dictionary<int, Color> mappedColor = new Dictionary<int, Color>();
-        static readonly Dictionary<Material, Color> origFace = new Dictionary<Material, Color>();
         static bool busy;
 
         public static bool Light => Check() && def.Light;
 
-        static readonly int FaceColor = Shader.PropertyToID("_FaceColor");
         static float nextTick;
 
         // Called every frame from always-running UI code: menus are shown/hidden by toggling their
@@ -71,7 +69,6 @@ namespace BrightQud
                 Debug.Log("BrightQud theme option: '" + choice + "' active=" + active);
                 textures.Clear();
                 sprites.Clear();
-                ours.Clear();
                 RestyleAll();
             }
             return active;
@@ -144,16 +141,16 @@ namespace BrightQud
             return copy;
         }
 
-        static Sprite Themed(Sprite s)
+        static Sprite Themed(Sprite src)
         {
-            if (sprites.TryGetValue(s.GetInstanceID(), out var done)) return done;
-            var tex = Recolor(s.texture);
-            var r = s.rect;
-            var t = Sprite.Create(tex, r, new Vector2(s.pivot.x / r.width, s.pivot.y / r.height), s.pixelsPerUnit, 0,
-                SpriteMeshType.FullRect, s.border);
-            t.name = s.name;
-            sprites[s.GetInstanceID()] = t;
-            ours.Add(t.GetInstanceID());
+            if (sprites.TryGetValue(src.GetInstanceID(), out var done)) return done;
+            var tex = Recolor(src.texture);
+            var r = src.rect;
+            var t = Sprite.Create(tex, r, new Vector2(src.pivot.x / r.width, src.pivot.y / r.height), src.pixelsPerUnit, 0,
+                SpriteMeshType.FullRect, src.border);
+            t.name = src.name;
+            sprites[src.GetInstanceID()] = t;
+            originalOf[t.GetInstanceID()] = src;
             return t;
         }
 
@@ -167,30 +164,30 @@ namespace BrightQud
             {
                 int id = img.GetInstanceID();
                 var s = img.sprite;
-                bool oursNow = s != null && ours.Contains(s.GetInstanceID());
+                // Always theme from the game's own sprite, even when a previous theme's copy is shown.
+                var src = s != null && originalOf.TryGetValue(s.GetInstanceID(), out var o) ? o : s;
                 // The game changed the colour since we themed it: that is the new original.
                 if (mappedColor.TryGetValue(id, out var mc) && img.color != mc) { origColor.Remove(id); mappedColor.Remove(id); }
-                if (!oursNow) origSprite.Remove(id);
                 if (!on)
                 {
-                    if (oursNow && origSprite.TryGetValue(id, out var os)) img.sprite = os;
+                    if (src != s) img.sprite = src;
                     if (origColor.TryGetValue(id, out var oc)) img.color = oc;
-                    origSprite.Remove(id);
                     origColor.Remove(id);
                     mappedColor.Remove(id);
                     return;
                 }
-                if (s == null || IsChrome(s) || oursNow)
+                bool chrome = src != null && IsChrome(src);
+                if (src == null || chrome)
                 {
                     if (!origColor.ContainsKey(id)) origColor[id] = img.color;
                     var c = Map(origColor[id]);
                     mappedColor[id] = c;
                     if (img.color != c) img.color = c;
                 }
-                if (s != null && !oursNow && IsChrome(s) && s.texture != null)
+                if (chrome && src.texture != null)
                 {
-                    img.sprite = Themed(s);
-                    origSprite[id] = s;
+                    var t = Themed(src);
+                    if (s != t) img.sprite = t;
                 }
             }
             catch (Exception e)
@@ -203,22 +200,58 @@ namespace BrightQud
             }
         }
 
-        // Light theme: dark text (vertex colours are multiplied by the material's face colour).
+        // Light theme: dark "ink" text. Every text mesh is recoloured right after TextMeshPro builds
+        // it (rich-text colour tags included), keeping each colour's hue.
+        static bool hooked;
+        static readonly Dictionary<int, Color32> inkMemo = new Dictionary<int, Color32>();
+
+        static Color32 Ink(Color32 c)
+        {
+            int key = (c.r << 16) | (c.g << 8) | c.b;
+            if (!inkMemo.TryGetValue(key, out var o))
+            {
+                Color.RGBToHSV(c, out float h, out float sat, out float v);
+                Color d = sat < 0.2f ? new Color(0.22f, 0.17f, 0.12f)
+                    : Color.HSVToRGB(h, Mathf.Max(sat, 0.6f), Mathf.Min(v, 0.45f));
+                o = d;
+                inkMemo[key] = o;
+            }
+            o.a = c.a;
+            return o;
+        }
+
+        static void OnTextChanged(UnityEngine.Object obj)
+        {
+            try
+            {
+                if (!(obj is TextMeshProUGUI t) || !active || !def.Light || !Fonts.OnMainThread) return;
+                var info = t.textInfo;
+                if (info?.meshInfo == null) return;
+                bool changed = false;
+                for (int m = 0; m < info.meshInfo.Length; m++)
+                {
+                    var colors = info.meshInfo[m].colors32;
+                    if (colors == null) continue;
+                    int n = Math.Min(info.meshInfo[m].vertexCount, colors.Length);
+                    for (int i = 0; i < n; i++) colors[i] = Ink(colors[i]);
+                    changed |= n > 0;
+                }
+                if (changed) t.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+            }
+            catch (Exception e)
+            {
+                MetricsManager.LogException("BrightQud.Theme.Text", e);
+            }
+        }
+
         public static void Apply(TMP_Text t)
         {
             if (!Fonts.OnMainThread) return;
-            bool light = Light;
-            var mat = t?.fontSharedMaterial;
-            if (mat == null || !mat.HasProperty(FaceColor)) return;
-            if (light && !origFace.ContainsKey(mat))
+            Check();
+            if (!hooked)
             {
-                origFace[mat] = mat.GetColor(FaceColor);
-                mat.SetColor(FaceColor, new Color(0.22f, 0.17f, 0.12f, 1f));
-            }
-            else if (!light && origFace.TryGetValue(mat, out var face))
-            {
-                mat.SetColor(FaceColor, face);
-                origFace.Remove(mat);
+                hooked = true;
+                TMPro_EventManager.TEXT_CHANGED_EVENT.Add(OnTextChanged);
             }
         }
 
@@ -232,7 +265,7 @@ namespace BrightQud
             foreach (var img in images)
             {
                 var s = img.sprite;
-                if (s != null && ours.Contains(s.GetInstanceID())) chrome++;
+                if (s != null && originalOf.ContainsKey(s.GetInstanceID())) chrome++;
                 else if (s == null) { flat++; string c = ColorUtility.ToHtmlStringRGBA(img.color); colors[c] = colors.TryGetValue(c, out int n) ? n + 1 : 1; }
                 else { string k = s.name + "@" + (s.texture != null ? s.texture.name : "?"); other[k] = other.TryGetValue(k, out int n) ? n + 1 : 1; }
             }
@@ -253,7 +286,10 @@ namespace BrightQud
                     Apply(img);
                 Report(images);
                 foreach (var t in UnityEngine.Object.FindObjectsByType<TextMeshProUGUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                {
                     Apply(t);
+                    if (t.isActiveAndEnabled) t.ForceMeshUpdate();
+                }
             }
             catch (Exception e)
             {

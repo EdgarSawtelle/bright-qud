@@ -7,7 +7,7 @@ Bold outlines, saturated colours and readability first. **Gameplay is unchanged*
 no creatures, items or stats and stores nothing in your save, so you can turn it off at any time.
 Every helper below has its own switch in **Options → Mods**.
 
-![Joppa with Bright Qud](mockups/b3_scene.png)
+![Joppa with Bright Qud](screenshots/joppa.png)
 
 ## What it does
 
@@ -58,6 +58,14 @@ Every helper below has its own switch in **Options → Mods**.
 - **Controls reminder** (LT + View, or F3): the most useful commands for a playthrough on a gamepad.
   Pick one to use it.
 - **Legend**: what every marker and colour means (Options → Mods → "show legend").
+
+## Screenshots
+| | |
+|---|---|
+| ![Key stats when you look at a creature](screenshots/look-stats.png) | ![Item comparison](screenshots/item-compare.png) |
+| Key stats on top of the description | Item comparison with what you wear |
+| ![Controls reminder](screenshots/controls-reminder.png) | ![Amber interface colours](screenshots/amber-theme.png) |
+| Controls reminder (LT + View) | Amber interface colours and the Clear mono font |
 
 ## Install
 - **Steam Workshop**: coming soon.

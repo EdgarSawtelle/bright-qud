@@ -1074,7 +1074,10 @@ namespace BrightQud
             {
                 if (eq == null) continue;
                 var mw = eq.GetPart<XRL.World.Parts.MeleeWeapon>();
-                if (mw != null && melee.Count < 3)
+                // Clothes have an improvised MeleeWeapon too: only real or natural weapons count.
+                bool weapon = eq.GetInventoryCategory() == "Melee Weapons"
+                    || eq.HasTag("NaturalGear") && !eq.HasPart<XRL.World.Parts.Armor>();
+                if (mw != null && weapon && melee.Count < 3)
                 {
                     string m = Name(eq) + " " + mw.BaseDamage;
                     if (!melee.Contains(m)) melee.Add(m);
@@ -1104,7 +1107,7 @@ namespace BrightQud
             else
             {
                 var mw = o.GetPart<XRL.World.Parts.MeleeWeapon>();
-                if (mw != null && !o.HasTag("NaturalGear"))
+                if (mw != null && !o.HasTag("NaturalGear") && o.GetInventoryCategory() == "Melee Weapons")
                     lines.Add("{{R|Melee:}} " + mw.BaseDamage + " damage"
                         + (mw.PenBonus != 0 ? ", +" + mw.PenBonus + " penetration" : "")
                         + " ({{K|" + Words(mw.Skill) + "}})");
