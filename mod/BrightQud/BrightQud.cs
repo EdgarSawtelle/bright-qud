@@ -1134,6 +1134,8 @@ namespace BrightQud
                 if (o.HasPart("Food")) lines.Add("{{G|Food}}: eat it to stay sated");
             }
             lines.Add("{{K|Weight " + o.Weight + " lbs}}");
+            string compare = ItemCompare.Block(o);
+            if (compare != null) lines.Add(compare);
             return string.Join("\n", lines);
         }
     }
@@ -1145,7 +1147,7 @@ namespace BrightQud
         static bool animation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
-            abilityHelp = true;
+            abilityHelp = true, compareItems = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More";
 
         static void Refresh()
@@ -1171,6 +1173,7 @@ namespace BrightQud
                 dangerTint = XRL.UI.Options.GetOption("OptionBrightQudDangerTint", "Yes").EqualsNoCase("Yes");
                 lookStats = XRL.UI.Options.GetOption("OptionBrightQudLookStats", "Yes").EqualsNoCase("Yes");
                 abilityHelp = XRL.UI.Options.GetOption("OptionBrightQudAbilityHelp", "Yes").EqualsNoCase("Yes");
+                compareItems = XRL.UI.Options.GetOption("OptionBrightQudCompareItems", "Yes").EqualsNoCase("Yes");
                 font = XRL.UI.Options.GetOption("OptionBrightQudFont", "Clear mono") ?? "Game default";
                 abilityBar = XRL.UI.Options.GetOption("OptionBrightQudAbilityBar", "More") ?? "Game default";
                 string look = XRL.UI.Options.GetOption("OptionBrightQudPlayerLook", "Game default");
@@ -1199,6 +1202,7 @@ namespace BrightQud
         public static bool DangerTint { get { Refresh(); return dangerTint; } }
         public static bool LookStats { get { Refresh(); return lookStats; } }
         public static bool AbilityHelp { get { Refresh(); return abilityHelp; } }
+        public static bool CompareItems { get { Refresh(); return compareItems; } }
         // "Game default", "Clear mono" or "Readable" (UiTweaks.cs Fonts).
         public static string Font { get { Refresh(); return font; } }
         // "Game default", "More" or "Most" abilities per page.

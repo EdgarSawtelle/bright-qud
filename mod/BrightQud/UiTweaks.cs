@@ -29,6 +29,17 @@ namespace BrightQud
         static readonly ConditionalWeakTable<TMP_Text, TMP_FontAsset> originals = new ConditionalWeakTable<TMP_Text, TMP_FontAsset>();
         static readonly HashSet<string> seen = new HashSet<string>();
 
+        static readonly string Prefill = BuildPrefill();
+
+        static string BuildPrefill()
+        {
+            var sb = new System.Text.StringBuilder();
+            for (char c = (char)32; c < 127; c++) sb.Append(c);
+            for (char c = (char)160; c < 384; c++) sb.Append(c);
+            sb.Append("–—‘’“”•…←↑→↓↔·×÷°±²³");
+            return sb.ToString();
+        }
+
         static string FileFor(string choice) =>
             choice.EqualsNoCase("Clear mono") ? "IBMPlexMono-Medium.ttf"
             : choice.EqualsNoCase("Readable") ? "AtkinsonHyperlegible-Regular.ttf" : null;
@@ -49,8 +60,15 @@ namespace BrightQud
                         try
                         {
                             string path = System.IO.Path.Combine(ModManager.GetMod("BrightQud").Path, "Fonts", file);
-                            asset = TMP_FontAsset.CreateFontAsset(path, 0, 64, 6, GlyphRenderMode.SDFAA, 1024, 1024);
-                            if (asset != null) asset.name = "BrightQud " + choice;
+                            // One big atlas filled up front: glyphs added later to a second atlas
+                            // rendered with a different weight (mixed-looking letters).
+                            asset = TMP_FontAsset.CreateFontAsset(path, 0, 72, 9, GlyphRenderMode.SDFAA, 2048, 2048);
+                            if (asset != null)
+                            {
+                                asset.name = "BrightQud " + choice;
+                                asset.isMultiAtlasTexturesEnabled = false;
+                                asset.TryAddCharacters(Prefill);
+                            }
                             else MetricsManager.LogError("BrightQud.Fonts: could not load " + path);
                         }
                         catch (Exception e)
