@@ -195,6 +195,19 @@ namespace BrightQud
             return best?.ZoneID;
         }
 
+        // "Find the Vermin" names no place, but the step before it was "Travel to Red Rock": the
+        // latest finished step that names a place is where to look.
+        static string PreviousStepZone(Quest q, QuestStep step)
+        {
+            foreach (var s in q.StepsByID.Values.Where(s => s != null && s.Finished && s.Ordinal < step.Ordinal)
+                         .OrderByDescending(s => s.Ordinal))
+            {
+                string z = NoteZone(Plain(s.Name) + " " + Plain(s.Text));
+                if (z != null) return z;
+            }
+            return null;
+        }
+
         static Info Analyse(Quest q)
         {
             var info = new Info { Quest = q, Distance = int.MaxValue };
@@ -205,7 +218,8 @@ namespace BrightQud
                 info.Step = Plain(step.Name);
                 zone = SiteZone(q, step)
                     ?? NoteZone(Plain(step.Name) + " " + Plain(step.Text))
-                    ?? (info.Step.StartsWith("Return", StringComparison.OrdinalIgnoreCase) ? q.QuestGiverLocationZoneID : null);
+                    ?? (info.Step.StartsWith("Return", StringComparison.OrdinalIgnoreCase) ? q.QuestGiverLocationZoneID : null)
+                    ?? PreviousStepZone(q, step);
             }
             else
             {
@@ -330,10 +344,11 @@ namespace BrightQud
             var corners = new Vector3[4];
             ((RectTransform)bar.transform).GetWorldCorners(corners);
             float scale = Mathf.Max(0.0001f, rt.lossyScale.x);
-            float width = Mathf.Min(text.GetPreferredValues(text.text, 2000, 0).x + 20, (corners[2].x - corners[0].x) / scale * 0.7f);
+            Vector2 pref = text.GetPreferredValues(text.text, 2000, 0);
+            float width = Mathf.Min(pref.x + 20, (corners[2].x - corners[0].x) / scale * 0.7f);
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0, 1);
-            rt.sizeDelta = new Vector2(width, 26);
+            rt.sizeDelta = new Vector2(width, Mathf.Max(26, pref.y + 6));
             rt.position = corners[0] + new Vector3(8 * scale, -4 * scale, 0);
             panel.transform.SetAsLastSibling();
             if (!panel.activeSelf) panel.SetActive(true);
@@ -355,7 +370,9 @@ namespace BrightQud
             text.fontSize = 17;
             text.color = new Color(0.69f, 0.78f, 0.76f);
             text.textWrappingMode = TextWrappingModes.NoWrap;
-            text.overflowMode = TextOverflowModes.Ellipsis;
+            // (Ellipsis hid the whole line: TMP drops a line taller than the box, and the mono font's
+            // line height is more than the strip. Overflow + a box sized from the text instead.)
+            text.overflowMode = TextOverflowModes.Overflow;
             text.alignment = TextAlignmentOptions.MidlineLeft;
             if (font != null) text.font = font;
             var trt = (RectTransform)go.transform;

@@ -718,7 +718,7 @@ namespace BrightQud
             { "wall", "Dark base line: a wall. It blocks you." },
             { "ground", "Brown ground: outdoors. Warm wood: inside a building. Grey: underground." },
             { "memory", "Faded colors: remembered area, not in sight right now." },
-            { "danger", "World map: {{W|orange}} region = tougher than your level, {{R|red}} = much tougher." },
+            { "danger", "World map: {{W|orange}} tint = region tougher than your level, {{R|red}} = much tougher. Look at a region to see its level." },
             { "fire", "Flames around something: it's burning." },
         };
 
@@ -1042,7 +1042,7 @@ namespace BrightQud
             try
             {
                 if (go == null || !Settings.LookStats) return;
-                string summary = go.Brain != null && !go.IsPlayer() ? Creature(go) : go.Brain == null ? Item(go) : null;
+                string summary = go.Brain != null && !go.IsPlayer() ? Creature(go) : go.Brain == null ? Region(go) ?? Item(go) : null;
                 if (!summary.IsNullOrEmpty())
                     __result.LongDescription = summary + "\n\n" + __result.LongDescription;
             }
@@ -1106,6 +1106,20 @@ namespace BrightQud
                     if (m != null && names.Count < 5) names.Add(QudColor.StripFormatting(m.GetDisplayName(false)));
                 sb.Append("\n{{M|Mutations:}} ").Append(string.Join(", ", names));
             }
+        }
+
+        // World-map terrain: which levels the region suits, against yours (same tiers as the danger tint).
+        static string Region(XRL.World.GameObject o)
+        {
+            string t = o.GetTag("RegionTier", null);
+            if (t == null || !int.TryParse(t, out int tier) || The.Player == null) return null;
+            tier = Math.Max(1, tier);
+            int level = The.Player.Stat("Level");
+            int from = (tier - 1) * 5 + 1, to = tier * 5;
+            int d = tier - Ground.SuitedTier(level);
+            string verdict = d >= 2 ? "{{R|much tougher than you}}" : d == 1 ? "{{W|tougher than you}}"
+                : d == 0 ? "{{G|right for your level}}" : "{{g|easy for you}}";
+            return "{{W|Region: about level " + from + "-" + (tier >= 8 ? "40+" : to.ToString()) + "}}  (you: " + level + ") - " + verdict;
         }
 
         static string Item(XRL.World.GameObject o)
@@ -1301,6 +1315,11 @@ namespace BrightQud
             if (!pendingExplored) return;
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
             if (memory) hud = 0;
+            if (!isPlayer && Settings.Ground && cell.ParentZone != null && cell.ParentZone.IsWorldMap())
+            {
+                ch.Foreground = WorldTone(ch.Foreground);
+                ch.Detail = WorldTone(ch.Detail);
+            }
             // Idle animation, creatures bob on a shared beat (~1 per second).
             int beat = (XRL.Core.XRLCore.CurrentFrame / 31) % 2;
             // Burning: flames drawn around the object instead of a flickering yellow/black square;
@@ -1464,10 +1483,19 @@ namespace BrightQud
             if (danger != null && Settings.DangerTint)
             {
                 int d = danger[x, y];
-                if (d >= 2) c = Color.Lerp(c, DangerHigh, 0.45f);
-                else if (d == 1) c = Color.Lerp(c, DangerMid, 0.3f);
+                if (d >= 2) c = Color.Lerp(c, DangerHigh, 0.22f);
+                else if (d == 1) c = Color.Lerp(c, DangerMid, 0.12f);
             }
             return c;
+        }
+
+        // World map: the game's terrain colors are full brightness (white salt, neon jungle) and a whole
+        // screen of them glares. Calmer, a little warmer, never pure white.
+        static Color WorldTone(Color c)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            if (s < 0.2f) return Color.HSVToRGB(0.11f, 0.12f, Mathf.Min(v, 0.68f));
+            return Color.HSVToRGB(h, s * 0.72f, Mathf.Min(v, 0.8f));
         }
 
         static readonly Color DangerHigh = new Color(0.85f, 0.12f, 0.1f, 1f);
@@ -1476,11 +1504,13 @@ namespace BrightQud
 
         // Region tier (RegionTier tag of the terrain object, 1-8) vs the player's level: roughly one
         // tier per 5 levels (level 1-5 -> tier 1, 6-10 -> tier 2, ...).
+        public static int SuitedTier(int level) => Math.Min(8, 1 + Math.Max(0, level - 1) / 5);
+
         static int[,] ComputeDanger(Zone zone)
         {
             var player = The.Player;
             if (player == null) return null;
-            int suited = Math.Min(8, 1 + Math.Max(0, player.Stat("Level") - 1) / 5);
+            int suited = SuitedTier(player.Stat("Level"));
             var d = new int[zone.Width, zone.Height];
             for (int x = 0; x < zone.Width; x++)
                 for (int y = 0; y < zone.Height; y++)
