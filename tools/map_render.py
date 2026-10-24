@@ -114,6 +114,14 @@ def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None):
             cell = Image.new("RGBA", (16, 24), bg + (255,))
             if not name and bare and mode == "new":
                 cell.alpha_composite(bare(x, y))
+            liquid = next((o for o in cells.get((x, y), []) if o in bp().objs and is_liquid(o)), None)
+            if name and liquid and name != liquid and mode != "vanilla":
+                # swimmers and floating plants: the game draws the water under them
+                fgl, dtl = color_letters(bp(), liquid)
+                w = zm.ours(zm.key_of(zm.WATER), fgl, fgl)
+                if w is not None:
+                    r = tone(liquid, fgl, dtl, None) if (tone and mode == "new") else None
+                    cell.alpha_composite(zm.recolor_to(w, *r) if r else w)
             if name:
                 tile = tile_of(name, rnd)
                 group = bp().tag(name, "PaintWith")

@@ -29,9 +29,9 @@ def flat_ground(a, b, seed):
     return f
 
 
-def earth_tiles():
-    import build_tiles as B, earthground as E
-    tiles = [B.render(E.SPRITES[k], "terrain", fg="w", detail="w") for k in E.SPRITES]
+def earth_tiles(family="earth"):
+    import groundsets as G
+    tiles = G.tiles(family)
     return lambda x, y: tiles[(((x * 73856093) ^ (y * 19349663)) & 0x7fffffff) % len(tiles)]
 
 
@@ -112,10 +112,10 @@ REVIEWS = {
         map=None, scene=marsh_scene, box=(0, 0, 29, 12), night_label="glowpads light the water",
         title="2. Salt marsh - \"in stagnant pools, luminous lilies compete with the ribbon of stars in the "
               "night sky; under the salt sun they shrink into the shade of brine weed\"",
-        a=dict(name="A. Brackish shallows", ground=("4e5040", "56584a"),
-               tone={"SaltyWaterPuddle": ("5fa8a0", "2f6a66")},
-               note="Damp grey-olive mud with a salt crust, brackish teal-green water instead of pool blue; "
-                    "watervine and brinestalk carry the green."),
+        a=dict(name="A. Olive mud, silvery water (chosen)", ground=("4e5040", "54564a"), tiles="marsh",
+               tone={"SaltyWaterPuddle": ("9fb2b4", "5c7274")},
+               note="Chosen: olive mud with faint salt crust and tufted grass (low contrast), silvery "
+                    "grey-blue brackish water like real salt marshes; glowpads redrawn as floating lily pads."),
         b=dict(name="B. Salt-crusted marsh (like Joppa)", ground=("6e5c42", "756247"),
                tone={"SaltyWaterPuddle": ("8cc4c8", "4a8a92")},
                note="Same salt-spangled earth as Joppa, so the town and its marsh feel like one place; "
@@ -160,10 +160,10 @@ def sheet(key):
     gb = flat_ground(*r["b"]["ground"], key + "b")
     panels = [("Original game", MR.render(m, "vanilla", box)),
               ("Bright Qud today (ground approximate)", MR.render(m, "now", box)),
-              (r["a"]["name"] + " (textured ground)", MR.render(m, "new", box, ground=ga, tone=tone_for(r["a"]), bare=earth_tiles())),
+              (r["a"]["name"] + " (textured ground)", MR.render(m, "new", box, ground=ga, tone=tone_for(r["a"]), bare=earth_tiles(r["a"].get("tiles", "earth")))),
               (r["b"]["name"], MR.render(m, "new", box, ground=gb, tone=tone_for(r["b"]), bare=earth_tiles())),
               (r["a"]["name"] + " at night (" + r.get("night_label", "torch light") + ")", MR.render(m, "new", box, ground=ga, tone=tone_for(r["a"]),
-                                                                   night=night_for(m, box), bare=earth_tiles()))]
+                                                                   night=night_for(m, box), bare=earth_tiles(r["a"].get("tiles", "earth"))))]
     pw, ph = panels[0][1].size
     pad, head = 16, 30
     W = pad + 2 * (pw + pad)

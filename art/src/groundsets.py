@@ -22,6 +22,7 @@ FAMILIES = {
     "rust":  ("8c4e36", "93543a", "c9b8a0"),   # C rust and red rock
     "green": ("3d3a28", "433f2b", "4f6a32"),   # D green shade (jungle, marsh)
     "teal":  ("1e2c2c", "233232", "4a6e6a"),   # E dark teal (caves, sacred, tech)
+    "marsh": ("4e5040", "54564a", "8a8a5c"),   # D' salt marsh: olive mud, salt crust, tufted grass
 }
 
 
@@ -139,7 +140,24 @@ def teal(t, base, acc):
         t.put(t.rnd.randrange(2, 14), t.rnd.randrange(2, 22), shade(acc, 1.1, 0.7))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal}
+def marsh(t, base, acc):
+    t.grain(base, 30)
+    for _ in range(t.rnd.randrange(2, 4)):                 # tufted marsh grass: olive-golden blades
+        x, y = t.rnd.randrange(2, 14), t.rnd.randrange(7, 22)
+        for dx, h in ((-1, 2), (0, 3), (1, 2)):
+            for i in range(h):
+                t.put(x + dx + (i == h - 1) * dx, y - i, shade(acc, 0.82 + 0.06 * i, 0.75))
+    for _ in range(t.rnd.randrange(2, 4)):                 # faint salt crust on the mud
+        x, y = t.rnd.randrange(1, 14), t.rnd.randrange(2, 22)
+        for dx in range(t.rnd.randrange(2, 4)):
+            t.put(x + dx, y, shade(base, 1.18, 0.6))
+    for _ in range(t.rnd.randrange(1, 3)):                 # damp darker hollows
+        x, y = t.rnd.randrange(1, 14), t.rnd.randrange(2, 22)
+        for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1), (2, 0)):
+            t.put(x + dx, y + dy, shade(base, 0.86))
+
+
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh}
 
 
 def tiles(family):

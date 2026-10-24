@@ -24,22 +24,35 @@ def blob(c, cx, cy, rx, ry, lt, md, dk, hl=None):
 
 
 def glowpad():
+    """The salt marsh's "luminous lilies": "A leaf disc gleams through luminous veins." A flat lily pad
+    floating on the water (leaf in the detail colour), glowing veins in the main colour, a notch cut to
+    the centre and one small closed bud."""
     c = C()
-    # round pad with a notch, a bloom with an eye and a lure bulb
-    blob(c, 7.5, 15, 7.5, 5, "1", "2", "3")
-    c.r(7, 11, 8, 15, ".")   # notch (mouth edge)
-    c.r(7, 13, 8, 15, "3")
-    c.p(7, 15, "O"); c.p(8, 15, "O")
-    for x, y in ((3, 14), (12, 14), (4, 17), (11, 17), (7, 18), (2, 16)):
-        c.p(x, y, "4")
-    # puffed bloom: glowing orb on stalk
-    c.line(8, 12, 8, 7, "3")
-    c.line(7, 12, 6, 8, "3")
-    blob(c, 7.5, 5, 3.5, 3.5, "4", "5", "6")
-    c.p(6, 4, "w"); c.p(7, 4, "w")
-    c.p(7, 6, "O"); c.p(8, 6, "O")
-    c.r(3, 1, 3, 1, "4"); c.p(12, 2, "4"); c.p(7, 0, "4"); c.p(1, 4, "4"); c.p(14, 5, "4")
-    c.shadow(0, 15)
+    cx, cy, rx, ry = 7.5, 16.5, 7.2, 4.3
+    for y in range(24):
+        for x in range(16):
+            u, v = (x - cx) / rx, (y - cy) / ry
+            d = u * u + v * v
+            if d > 1:
+                continue
+            if x >= 8 and v < 0.15 and u > -0.1 and abs(v) <= (u + 0.05) * 1.1:   # notch, wedge to the centre
+                continue
+            t = (u + v) / 2
+            c.p(x, y, "6" if d > 0.62 and t > 0.12 else "4" if t < -0.25 and d > 0.35 else "5")
+    # luminous veins radiating from the centre (main colour, brightest near the middle)
+    for ex, ey in ((1, 15), (2, 19), (6, 21), (11, 20), (14, 18), (4, 13), (9, 13)):
+        steps = max(abs(ex - 7), abs(ey - 16))
+        for i in range(1, steps + 1):
+            x = round(7 + (ex - 7) * i / steps)
+            y = round(16 + (ey - 16) * i / steps)
+            u, v = (x - cx) / rx, (y - cy) / ry
+            if u * u + v * v < 0.92 and c.g[y][x] != ".":
+                c.p(x, y, "1" if i <= steps // 2 else "2")
+    c.p(7, 16, "1"); c.p(8, 16, "1"); c.p(7, 17, "w")
+    # a small closed bud on a short stem, leaning out of the notch
+    c.line(10, 15, 11, 11, "3")
+    blob(c, 11.5, 9.5, 1.6, 2.2, "1", "2", "3")
+    c.p(11, 8, "w")
     return c.out()
 
 

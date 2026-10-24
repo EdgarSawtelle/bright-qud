@@ -1690,9 +1690,12 @@ namespace BrightQud
         // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
-        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal" };
-        static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c") };
-        static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232") };
+        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh" };
+        static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040") };
+        static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a") };
+        const int FamilyMarsh = 5;
+        // Salt marsh water: silvery brackish grey-blue, as in real salt marshes (zone study 02).
+        static readonly Color MarshWater = Hex("8fa6a8"), MarshWaterLight = Hex("c4d2d2");
         static readonly string[][] FamilyTiles = BuildFamilyTiles();
 
         static string[][] BuildFamilyTiles()
@@ -1714,6 +1717,8 @@ namespace BrightQud
                     return 3;
                 case "TerrainGritGate":
                     return 4;
+                case "TerrainSaltmarsh": case "TerrainSaltmarsh2": case "TerrainWatervine": case "TerrainJoppaRedrockChannel":
+                    return FamilyMarsh;
             }
             if (bp.StartsWith("TerrainDesertCanyon", StringComparison.Ordinal)) return 2;
             if (bp.StartsWith("TerrainBananaGrove", StringComparison.Ordinal)) return 3;
@@ -1881,6 +1886,8 @@ namespace BrightQud
                 bool algae = h > 0.17f && h < 0.45f;
                 return detail ? (algae ? Algae : Color.Lerp(c, ReefWater, 0.3f)) : algae ? ReefWater : Color.Lerp(c, ReefWater, 0.5f);
             }
+            if (kind == KindFamily && zoneFamily == FamilyMarsh)
+                return detail ? Color.Lerp(c, MarshWaterLight, 0.5f) : Color.Lerp(c, MarshWater, 0.6f);
             if (kind == KindFungal) // primordial soup "cast in the light of lava"
                 return detail ? Color.Lerp(c, LavaLight, 0.6f) : Color.Lerp(c, SoupTeal, 0.55f);
             return c;
