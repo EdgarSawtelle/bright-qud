@@ -3,7 +3,7 @@
 <options>
   <option ID="OptionBrightQudPlayerLook" DisplayText="Bright Qud: player look" Category="Mods" Type="Combo" Values="Game default,Gunslinger,Adventurer,Mystic,Tinker,Scavenger,Warden,Pilgrim,Hunter" Default="Game default"></option>
   <option ID="OptionBrightQudAnimation" DisplayText="Bright Qud: creature animation (bobbing, flapping wings)" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (Moon Stair twinkle, glowing mushrooms)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (twinkles, glows, torch flicker; off by default)" Category="Mods" Type="Checkbox" Default="No"></option>
   <option ID="OptionBrightQudAutoStyle" DisplayText="Bright Qud: restyle tiles that aren't redrawn yet" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudGround" DisplayText="Bright Qud: colored ground instead of black" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudThreatRings" DisplayText="Bright Qud: red/green rings under enemies/allies" Category="Mods" Type="Checkbox" Default="Yes"></option>

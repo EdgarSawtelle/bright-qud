@@ -28,6 +28,8 @@ def bp():
 
 
 def load(map_name):
+    if isinstance(map_name, dict):          # a generated scene: (x, y) -> [object names]
+        return map_name
     root = ET.fromstring(re.sub(r"&#x?[0-9a-fA-F]+;", "?", open(os.path.join(BASE, map_name + ".rpm"), encoding="utf-8-sig").read()))
     cells = {}
     for c in root.iter("cell"):
@@ -97,7 +99,7 @@ def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None):
     tone(name, fg, detail, tile) -> (fg_rgb, detail_rgb) or None: proposal recolours (mode new)."""
     cells = load(map_name)
     tops = top_objects(cells)
-    rnd = random.Random(map_name)
+    rnd = random.Random(str(map_name)[:40])
     x0, y0, x1, y1 = box
     img = Image.new("RGBA", ((x1 - x0) * 16, (y1 - y0) * 24), (0, 0, 0, 255))
     for y in range(y0, y1):
@@ -129,6 +131,11 @@ def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None):
                             r = tone(name, fg, dt, key)
                             if r:
                                 t = zm.recolor_to(t, *r) if r[0] is not None else t
+                        if t is not None and mode == "new" and ground and layer(name) == 0 and not is_liquid(name) \
+                                and not (tone and tone(name, fg, dt, key)):
+                            # floors placed as objects (paths, dirt floors) stay low-contrast with the ground
+                            g = ground(x, y)
+                            t = zm.recolor_to(t, tuple(min(255, int(c * 1.14)) for c in g), tuple(int(c * 0.86) for c in g))
                         if t is not None and mode == "now" and key.startswith("liquids"):
                             t = zm.tone_liquid(t)
                 if t is None and key:

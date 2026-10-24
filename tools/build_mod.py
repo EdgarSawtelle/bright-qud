@@ -320,14 +320,18 @@ def main():
             write(img, flat_name(fk))
             write(mask, "BrightQudMask/" + flat_name(fk))
     # Zone floor tiles the runtime picks per cell (Rainbow Wood lush moss, Joppa earth) and their frames.
-    import rainbowwood, earthground
-    for k, grid in list(rainbowwood.SPRITES.items()) + list(earthground.SPRITES.items()):
-        frames = [grid] + {**rainbowwood.FRAMES, **earthground.FRAMES}.get(k, [])
+    import rainbowwood, groundsets
+    for k, grid in rainbowwood.SPRITES.items():
+        frames = [grid] + rainbowwood.FRAMES.get(k, [])
         for i, fr in enumerate(frames):
             fk = k if i == 0 else ("brightqudframe" if i == 1 else f"brightqudframe{i}") + "/" + k
             img, mask = B.render(fr, "terrain", fg="g", detail="g", with_mask=True)
             write(img, flat_name(fk))
             write(mask, "BrightQudMask/" + flat_name(fk))
+    # Ground family textures (exact colours, never recoloured: an empty role mask).
+    for k, im in groundsets.all_tiles().items():
+        write(im, flat_name(k))
+        write(Image.new("RGBA", im.size, (0, 0, 0, 0)), "BrightQudMask/" + flat_name(k))
     # Player looks, chosen in the game's Options (see Options.xml, written below).
     looks = K.player_looks(S)
     if "b3kit" in B3_BATCHES:
@@ -377,7 +381,7 @@ def write_options(looks):
 <options>
   <option ID="OptionBrightQudPlayerLook" DisplayText="Bright Qud: player look" Category="Mods" Type="Combo" Values="{values}" Default="Game default"></option>
   <option ID="OptionBrightQudAnimation" DisplayText="Bright Qud: creature animation (bobbing, flapping wings)" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (Moon Stair twinkle, glowing mushrooms)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (twinkles, glows, torch flicker; off by default)" Category="Mods" Type="Checkbox" Default="No"></option>
   <option ID="OptionBrightQudAutoStyle" DisplayText="Bright Qud: restyle tiles that aren't redrawn yet" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudGround" DisplayText="Bright Qud: colored ground instead of black" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudThreatRings" DisplayText="Bright Qud: red/green rings under enemies/allies" Category="Mods" Type="Checkbox" Default="Yes"></option>

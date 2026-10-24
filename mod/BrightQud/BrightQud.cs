@@ -1181,7 +1181,7 @@ namespace BrightQud
     {
         static int lastCheck;
         static bool refreshed;
-        static bool animation = true, tileAnimation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
+        static bool animation = true, tileAnimation = false, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
             abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
@@ -1198,7 +1198,7 @@ namespace BrightQud
             try
             {
                 animation = XRL.UI.Options.GetOption("OptionBrightQudAnimation", "Yes").EqualsNoCase("Yes");
-                tileAnimation = XRL.UI.Options.GetOption("OptionBrightQudTileAnimation", "Yes").EqualsNoCase("Yes");
+                tileAnimation = XRL.UI.Options.GetOption("OptionBrightQudTileAnimation", "No").EqualsNoCase("Yes"); // off by default (user rule)
                 autoStyle = XRL.UI.Options.GetOption("OptionBrightQudAutoStyle", "Yes").EqualsNoCase("Yes");
                 ground = XRL.UI.Options.GetOption("OptionBrightQudGround", "Yes").EqualsNoCase("Yes");
                 threatRings = XRL.UI.Options.GetOption("OptionBrightQudThreatRings", "Yes").EqualsNoCase("Yes");
@@ -1392,15 +1392,25 @@ namespace BrightQud
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 if (kind == KindJoppa && bare)
                 {
-                    // Joppa's salt-spangled earth: pebbles, cracks, dry tufts, salt crust on every bare cell.
-                    int v = Hash(cell.X, cell.Y) % EarthTiles.Length;
-                    ch._Tile = EarthTiles[v];
-                    lush = v >= 13; // a salt glint that twinkles
+                    // Joppa's salt-spangled earth: the warm-earth family tiles on every bare cell.
+                    ch._Tile = FamilyTiles[1][Hash(cell.X, cell.Y) % 16];
                 }
-                else if (kind == KindJoppa && top != null && (top.Blueprint == "DirtPath" || top.Blueprint == "DirtFloor"))
+                else if (kind == KindFamily && bare)
+                    ch._Tile = FamilyTiles[zoneFamily][Hash(cell.X, cell.Y) % 16];
+                else if ((kind == KindFamily || kind == KindJoppa || kind == KindSalt) && top != null
+                    && top.Render.RenderLayer == 0 && top.LiquidVolume == null && top.Brain == null
+                    && top.Blueprint != "DirtPath" && top.Blueprint != "DirtFloor")
                 {
-                    ch.Foreground = PathLight;   // packed paths, darker than the open earth
-                    ch.Detail = PathDark;
+                    // Floors placed as objects stay low-contrast with the zone's ground (zone average:
+                    // few distinct colours, so few cached textures).
+                    ch.Foreground = Scale(zoneGround, 1.14f);
+                    ch.Detail = Scale(zoneGround, 0.86f);
+                }
+                else if ((kind == KindJoppa || kind == KindFamily) && top != null && (top.Blueprint == "DirtPath" || top.Blueprint == "DirtFloor"))
+                {
+                    // packed paths, a little darker than the open ground
+                    ch.Foreground = kind == KindJoppa ? PathLight : Scale(zoneGround, 1.06f);
+                    ch.Detail = kind == KindJoppa ? PathDark : Scale(zoneGround, 0.78f);
                 }
                 else if (kind == KindSalt && bare)
                 {
@@ -1655,7 +1665,8 @@ namespace BrightQud
             outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
-                : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight) : ComputeOutdoor(zone);
+                : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight)
+                : zoneKind == KindFamily ? Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily]) : ComputeOutdoor(zone);
             ComputeLight(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
             Color sum = Color.clear;
@@ -1674,7 +1685,40 @@ namespace BrightQud
         static readonly Color MarbleStone = Hex("221e30");
         static readonly Color MarbleVein = Hex("8c86b8");
 
-        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5;
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5, KindFamily = 6;
+
+        // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
+        // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
+        static int zoneFamily;
+        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal" };
+        static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c") };
+        static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232") };
+        static readonly string[][] FamilyTiles = BuildFamilyTiles();
+
+        static string[][] BuildFamilyTiles()
+        {
+            var t = new string[FamilyNames.Length][];
+            for (int f = 0; f < t.Length; f++) t[f] = BuildTiles("brightqudground/" + FamilyNames[f] + "/", 16);
+            return t;
+        }
+
+        static int FamilyOf(string bp)
+        {
+            switch (bp)
+            {
+                case "TerrainSixDayStilt": case "TerrainHills": case "TerrainMountains": case "TerrainMountainsSpindleShadow":
+                    return 0;
+                case "TerrainRedRock": case "TerrainRustWell": case "TerrainBethesdaSusa": case "TerrainRustedArchway":
+                    return 2;
+                case "TerrainJungle": case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
+                    return 3;
+                case "TerrainGritGate":
+                    return 4;
+            }
+            if (bp.StartsWith("TerrainDesertCanyon", StringComparison.Ordinal)) return 2;
+            if (bp.StartsWith("TerrainBananaGrove", StringComparison.Ordinal)) return 3;
+            return -1;
+        }
         static int zoneKind;
         static Color zoneGround; // average outdoor ground of the cached zone (rounded)
         static readonly Color MossDark = Hex("202116");
@@ -1692,8 +1736,14 @@ namespace BrightQud
                 if (bp == "TerrainJoppa" || bp == "TerrainJoppaRuins") return KindJoppa;
                 if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
                 if (bp != null && (bp.StartsWith("TerrainSaltdunes", StringComparison.Ordinal)
-                    || bp == "TerrainTremblezone" || bp == "TerrainSixDayStilt")) return KindSalt;
+                    || bp == "TerrainTremblezone")) return KindSalt;
                 if (bp != null && bp.StartsWith("TerrainPalladiumReef", StringComparison.Ordinal)) return KindReef;
+                int family = bp != null ? FamilyOf(bp) : -1;
+                if (family >= 0)
+                {
+                    zoneFamily = family;
+                    return KindFamily;
+                }
             }
             catch (Exception) { }
             return KindPlain;
@@ -1747,7 +1797,6 @@ namespace BrightQud
         // Joppa: "the salt-spangled earth" - pale sun-dried earth, darker packed paths.
         static readonly Color JoppaDark = Hex("6e5c42"), JoppaLight = Hex("756247");
         static readonly Color PathLight = Hex("8a7656"), PathDark = Hex("5e4c36");
-        static readonly string[] EarthTiles = BuildTiles("brightqudearth/", 16);
 
         // Warm pools of light around fixed light sources (torch posts, campfires...) at night.
         static float[,] light;
@@ -1836,6 +1885,8 @@ namespace BrightQud
                 return detail ? Color.Lerp(c, LavaLight, 0.6f) : Color.Lerp(c, SoupTeal, 0.55f);
             return c;
         }
+
+        static Color Scale(Color c, float k) => new Color(Mathf.Min(1f, c.r * k), Mathf.Min(1f, c.g * k), Mathf.Min(1f, c.b * k), 1f);
 
         static int Hash(int x, int y) => ((x * 73856093) ^ (y * 19349663)) & 0x7fffffff;
 
