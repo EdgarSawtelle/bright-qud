@@ -15,9 +15,11 @@ class Blueprints:
         self.objs = {}
         for f in glob.glob(BASE + "/ObjectBlueprints/*.xml"):
             for o in _parse(f).iter("object"):
-                d = {"inh": o.get("Inherits"), "parts": {}, "tags": {}}
+                d = {"inh": o.get("Inherits"), "parts": {}, "tags": {}, "builders": {}}
                 for p in o.findall("part"):
                     d["parts"].setdefault(p.get("Name"), {}).update(p.attrib)
+                for b in o.findall("builder"):
+                    d["builders"].setdefault(b.get("Name"), {}).update(b.attrib)
                 for t in o.findall("tag"):
                     d["tags"][t.get("Name")] = t.get("Value")
                 self.objs[o.get("Name")] = d
@@ -32,6 +34,12 @@ class Blueprints:
     def part(self, name, part, attr):
         for o in self._walk(name):
             v = o["parts"].get(part, {}).get(attr)
+            if v is not None:
+                return v
+
+    def builder(self, name, builder, attr):
+        for o in self._walk(name):
+            v = o.get("builders", {}).get(builder, {}).get(attr)
             if v is not None:
                 return v
 

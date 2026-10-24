@@ -319,10 +319,10 @@ def main():
             img, mask = B.render(grid, "terrain", fg=fg, detail=det, with_mask=True)
             write(img, flat_name(fk))
             write(mask, "BrightQudMask/" + flat_name(fk))
-    # Rainbow Wood lush floor tiles (runtime picks one per cell) and their breathing frames.
-    import rainbowwood
-    for k, grid in rainbowwood.SPRITES.items():
-        frames = [grid] + rainbowwood.FRAMES.get(k, [])
+    # Zone floor tiles the runtime picks per cell (Rainbow Wood lush moss, Joppa earth) and their frames.
+    import rainbowwood, earthground
+    for k, grid in list(rainbowwood.SPRITES.items()) + list(earthground.SPRITES.items()):
+        frames = [grid] + {**rainbowwood.FRAMES, **earthground.FRAMES}.get(k, [])
         for i, fr in enumerate(frames):
             fk = k if i == 0 else ("brightqudframe" if i == 1 else f"brightqudframe{i}") + "/" + k
             img, mask = B.render(fr, "terrain", fg="g", detail="g", with_mask=True)

@@ -1,4 +1,4 @@
-"""Bright Qud master palette (25 colors). One letter per color; '.' is transparent.
+"""Bright Qud master palette (27 colors). One letter per color; '.' is transparent.
 
 Value hierarchy (readability rule): creatures > items > obstacles > floor/water.
 Floors live in the darkest band, characters in the brightest/most saturated.
@@ -30,6 +30,8 @@ PALETTE = {
     "E": "#43372c",  # dirt light (floor specks)
     "p": "#7c7ccc",  # periwinkle: cool crystal shadow (Moon Stair)
     "P": "#4a4888",  # deep blue-violet: crystal deep shade
+    "u": "#655238",  # earth shade: soft darker patches (Joppa ground)
+    "U": "#857052",  # earth light: soft lighter patches
 }
 
 # Cell background the game paints behind every tile: Display.txt color "k".

@@ -30,7 +30,8 @@ Every helper below has its own switch in **Options → Mods**.
   floors, glowing mushrooms) have separate switches.
 - **Zones with their own look**: the Moon Stair has whole crystals made of leaning lavender shards
   on a sci-fi hexagon floor whose lights slowly twinkle; the Rainbow Wood is lush dark moss with
-  tufts and tiny mushrooms, a few of them slowly glowing. Frogs, reptiles and Templars redrawn.
+  tufts and tiny mushrooms, a few of them slowly glowing; Joppa sits on textured, salt-spangled earth.
+  At night, torch posts and campfires cast warm, gently flickering pools of light. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |

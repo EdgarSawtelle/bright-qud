@@ -1389,8 +1389,20 @@ namespace BrightQud
             if (Settings.Ground && cell.ParentZone != null && !cell.ParentZone.IsWorldMap())
             {
                 int kind = ZoneKind(cell);
-                if (kind == KindSalt && top == null
-                    && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.'))
+                bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
+                if (kind == KindJoppa && bare)
+                {
+                    // Joppa's salt-spangled earth: pebbles, cracks, dry tufts, salt crust on every bare cell.
+                    int v = Hash(cell.X, cell.Y) % EarthTiles.Length;
+                    ch._Tile = EarthTiles[v];
+                    lush = v >= 13; // a salt glint that twinkles
+                }
+                else if (kind == KindJoppa && top != null && (top.Blueprint == "DirtPath" || top.Blueprint == "DirtFloor"))
+                {
+                    ch.Foreground = PathLight;   // packed paths, darker than the open earth
+                    ch.Detail = PathDark;
+                }
+                else if (kind == KindSalt && bare)
                 {
                     // The game leaves many salt cells bare; on light ground they read as flat squares.
                     // Every bare cell gets one of the 12 dune ripple tiles, as soft darker-ivory lines.
@@ -1457,6 +1469,7 @@ namespace BrightQud
             if (!IsDefault(ch.Background)) return;
             Color g = ColorFor(cell);
             if (memory) g = Color.Lerp(g, MemoryGround, MemoryFade);
+            else g = Lit(g, cell);
             ch.Background = g;
             // Empty text cells draw their "background" from Foreground (text shader swaps them).
             if (ch._Tile == null && ch.Char == ' ') ch.Foreground = g;
@@ -1641,7 +1654,9 @@ namespace BrightQud
             enclosed = moon ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
             outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
-                : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight) : ComputeOutdoor(zone);
+                : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
+                : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight) : ComputeOutdoor(zone);
+            ComputeLight(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
             Color sum = Color.clear;
             foreach (Color c in outdoor) sum += c;
@@ -1659,7 +1674,7 @@ namespace BrightQud
         static readonly Color MarbleStone = Hex("221e30");
         static readonly Color MarbleVein = Hex("8c86b8");
 
-        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4;
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5;
         static int zoneKind;
         static Color zoneGround; // average outdoor ground of the cached zone (rounded)
         static readonly Color MossDark = Hex("202116");
@@ -1674,6 +1689,7 @@ namespace BrightQud
             {
                 string bp = zone.GetTerrainObject()?.Blueprint;
                 if (bp == "TerrainMoonStair") return KindMoon;
+                if (bp == "TerrainJoppa" || bp == "TerrainJoppaRuins") return KindJoppa;
                 if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
                 if (bp != null && (bp.StartsWith("TerrainSaltdunes", StringComparison.Ordinal)
                     || bp == "TerrainTremblezone" || bp == "TerrainSixDayStilt")) return KindSalt;
@@ -1728,6 +1744,65 @@ namespace BrightQud
         // islands of the official map art, so the sky-blue water and red coral stand out.
         static readonly Color SaltDark = Hex("a2967e"), SaltLight = Hex("ab9f87"), SaltShadow = Hex("877c66");
         static readonly Color ReefDark = Hex("1d3536"), ReefLight = Hex("233f40");
+        // Joppa: "the salt-spangled earth" - pale sun-dried earth, darker packed paths.
+        static readonly Color JoppaDark = Hex("6e5c42"), JoppaLight = Hex("756247");
+        static readonly Color PathLight = Hex("8a7656"), PathDark = Hex("5e4c36");
+        static readonly string[] EarthTiles = BuildTiles("brightqudearth/", 16);
+
+        // Warm pools of light around fixed light sources (torch posts, campfires...) at night.
+        static float[,] light;
+        static bool night;
+        static readonly Color TorchWarm = Hex("ffaa5a");
+
+        static void ComputeLight(Zone zone)
+        {
+            light = null;
+            try { night = !XRL.World.Calendar.IsDay(); } catch (Exception) { night = false; }
+            if (!night || zone.IsWorldMap()) return;
+            var l = new float[zone.Width, zone.Height];
+            bool any = false;
+            foreach (XRL.World.GameObject o in zone.GetObjectsWithPart("LightSource"))
+            {
+                var src = o.GetPart<XRL.World.Parts.LightSource>();
+                Cell c = o.CurrentCell;
+                if (src == null || !src.Lit || c == null || o.Brain != null) continue; // fixed lights only
+                int r = Math.Min(Math.Max(src.Radius, 2), 6);
+                for (int dx = -r; dx <= r; dx++)
+                    for (int dy = -r; dy <= r; dy++)
+                    {
+                        int x = c.X + dx, y = c.Y + dy;
+                        if (x < 0 || y < 0 || x >= zone.Width || y >= zone.Height) continue;
+                        float d = Mathf.Sqrt(dx * dx + dy * dy) / r;
+                        if (d >= 1f) continue;
+                        float f = Mathf.Pow(1f - d, 1.5f);
+                        if (f > l[x, y]) l[x, y] = f;
+                        any = true;
+                    }
+            }
+            light = any ? l : null;
+        }
+
+        // Ground under torch light: brighter and warmer, with a slow flicker.
+        static Color Lit(Color g, Cell cell)
+        {
+            if (light == null || !Settings.Ground) return g;
+            int x = cell.X, y = cell.Y;
+            if (x < 0 || y < 0 || x >= light.GetLength(0) || y >= light.GetLength(1)) return g;
+            float f = light[x, y];
+            if (f <= 0f) return g;
+            float flicker = Settings.TileAnimation ? 1f + 0.08f * Mathf.Sin(XRL.Core.XRLCore.CurrentFrame * 0.05f + x * 1.7f + y) : 1f;
+            float k = f * 0.55f * flicker;
+            Color b = new Color(Mathf.Min(1f, g.r * (1f + k * 1.2f)), Mathf.Min(1f, g.g * (1f + k * 1.2f)),
+                Mathf.Min(1f, g.b * (1f + k * 1.2f)), 1f);
+            return Color.Lerp(b, TorchWarm, k * 0.35f);
+        }
+
+        static string[] BuildTiles(string prefix, int n)
+        {
+            var t = new string[n];
+            for (int i = 0; i < n; i++) t[i] = prefix + i;
+            return t;
+        }
         static readonly Color ReefWater = Hex("4aa8d8"), Algae = Hex("3fae3a");
         static readonly Color SoupTeal = Hex("2f6e66"), LavaLight = Hex("d8843c");
         static readonly Color VerdigrisMetal = Hex("5f857e"), VerdigrisPatina = Hex("4a6a4c");
