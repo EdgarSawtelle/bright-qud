@@ -8,7 +8,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Characters and monsters in a "weird retro sci-fi" style; 3/4-view walls, water, plants and furniture
 [*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
 [*]Seed-generated colours are kept; tiles from other mods get an automatic matching restyle
-[*]Choose your character's look; gentle idle animation
+[*]Choose your character's look; gentle idle animation (creature and tile animation have separate switches)
 [*]Zones with their own look: lavender crystal Moon Stair with a twinkling hexagon floor, lush mossy Rainbow Wood with tiny glowing mushrooms
 [*]Redrawn frogs (svardym), reptiles and Putus Templars
 [/list]
@@ -17,7 +17,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [list]
 [*]Red / green rings under enemies and companions, health bars over hurt creatures
 [*]Ring under you that pulses red at low health
-[*]Items on the ground sparkle; gold corner on stairs and filled containers
+[*]Items on the ground sparkle; gold corner on stairs and filled containers (F6 or the controls reminder turns them on/off)
 [*]Speech bubble on merchants and named characters (fades once you've talked)
 [*]Remembered areas clearly dimmer than what you see; coloured ground instead of black
 [*]Flames on burning things, no black squares behind gas, explosions or thrown items

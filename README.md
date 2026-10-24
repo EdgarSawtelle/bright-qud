@@ -26,7 +26,8 @@ Every helper below has its own switch in **Options → Mods**.
 - **Other mods' tiles get restyled**: tiles Bright Qud doesn't know (from content mods) get brighter
   colours and outlines, so the whole world matches.
 - **Player look**: pick a sprite for your character (Gunslinger, Mystic, Tinker, Warden...).
-- **Idle animation**: creatures bob gently and wings flap.
+- **Idle animation**: creatures bob gently and wings flap. Creature and tile animation (twinkling
+  floors, glowing mushrooms) have separate switches.
 - **Zones with their own look**: the Moon Stair has whole crystals made of leaning lavender shards
   on a sci-fi hexagon floor whose lights slowly twinkle; the Rainbow Wood is lush dark moss with
   tufts and tiny mushrooms, a few of them slowly glowing. Frogs, reptiles and Templars redrawn.
@@ -39,7 +40,7 @@ Every helper below has its own switch in **Options → Mods**.
 | Your ring | warm ring under you; it turns red and pulses when your health is low |
 | Item sparkle | items lying on the ground twinkle |
 | Talk bubbles | speech bubble over merchants and named characters; it fades once you've talked |
-| Gold corners | stairs and containers that still hold items |
+| Gold corners | stairs and containers that still hold items (F6 turns these and the sparkle off/on) |
 | Clear memory | remembered areas (out of sight) are clearly dimmer than what you see now |
 | Coloured ground | real ground colours instead of black |
 | Fire and effects | flames drawn on burning things; no black squares behind gas, explosions or thrown items |

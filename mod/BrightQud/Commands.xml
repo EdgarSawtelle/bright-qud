@@ -8,4 +8,7 @@
     <keyboardBind Key="F4"/>
     <gamepadBind Alt="true" Button="leftStickPress"/>
   </command>
+  <command ID="CmdBrightQudMarkers" DisplayText="Bright Qud: item sparkle and gold corners on/off" Category="Adventuring" Layer="Adventure" Auto="Down">
+    <keyboardBind Key="F6"/>
+  </command>
 </commands>

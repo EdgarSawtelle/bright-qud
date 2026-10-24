@@ -751,10 +751,13 @@ namespace BrightQud
     public static class Controls
     {
         public const string Command = "CmdBrightQudControls";
+        public const string MarkersCommand = "CmdBrightQudMarkers";
 
         // { command ids ("+" joins two), text }. Empty id = a heading or a tip.
         static readonly string[,] Rows =
         {
+            { "", "{{W|BRIGHT QUD}}" },
+            { "CmdBrightQudMarkers", "Item sparkle (+) and gold corners on stairs/containers: on / off" },
             { "", "{{W|EXPLORING}}" },
             { "CmdBrightQudQuests", "Quests: your quests nearest first; pick one to follow (banner on screen)" },
             { "CmdAutoExplore", "Autoexplore: walk to unexplored places, stops when something shows up" },
@@ -850,12 +853,13 @@ namespace BrightQud
     {
         static bool Prefix(XRL.World.GameObject Actor, string Command, ref bool __result)
         {
-            if (Command != Controls.Command && Command != Quests.Command) return true;
+            if (Command != Controls.Command && Command != Quests.Command && Command != Controls.MarkersCommand) return true;
             try
             {
                 if (Actor != null && Actor.IsPlayer())
                 {
                     if (Command == Quests.Command) Quests.ShowFromGame();
+                    else if (Command == Controls.MarkersCommand) Settings.ToggleMapMarkers();
                     else Controls.ShowFromGame();
                 }
             }
@@ -875,7 +879,8 @@ namespace BrightQud
     {
         static void Postfix(string AbilityCommand, ref bool __result)
         {
-            if (AbilityCommand == Controls.Command || AbilityCommand == Quests.Command) __result = true;
+            if (AbilityCommand == Controls.Command || AbilityCommand == Quests.Command
+                || AbilityCommand == Controls.MarkersCommand) __result = true;
         }
     }
 
@@ -1173,7 +1178,7 @@ namespace BrightQud
     {
         static int lastCheck;
         static bool refreshed;
-        static bool animation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
+        static bool animation = true, tileAnimation = true, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
             abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
@@ -1190,6 +1195,7 @@ namespace BrightQud
             try
             {
                 animation = XRL.UI.Options.GetOption("OptionBrightQudAnimation", "Yes").EqualsNoCase("Yes");
+                tileAnimation = XRL.UI.Options.GetOption("OptionBrightQudTileAnimation", "Yes").EqualsNoCase("Yes");
                 autoStyle = XRL.UI.Options.GetOption("OptionBrightQudAutoStyle", "Yes").EqualsNoCase("Yes");
                 ground = XRL.UI.Options.GetOption("OptionBrightQudGround", "Yes").EqualsNoCase("Yes");
                 threatRings = XRL.UI.Options.GetOption("OptionBrightQudThreatRings", "Yes").EqualsNoCase("Yes");
@@ -1222,6 +1228,19 @@ namespace BrightQud
         }
 
         public static bool Animation { get { Refresh(); return animation; } }
+        public static bool TileAnimation { get { Refresh(); return tileAnimation; } }
+
+        // One press (F6, or from the controls reminder): item sparkle and gold corners all off, or all on.
+        public static void ToggleMapMarkers()
+        {
+            bool on = !(ItemSparkle || InteractMarkers);
+            XRL.UI.Options.SetOption("OptionBrightQudItemSparkle", on);
+            XRL.UI.Options.SetOption("OptionBrightQudInteractMarkers", on);
+            refreshed = false;
+            XRL.Messages.MessageQueue.AddPlayerMessage(on
+                ? "Bright Qud: item sparkle and gold corners {{G|on}}."
+                : "Bright Qud: item sparkle and gold corners {{R|off}} (F6 or the controls reminder to turn back on).");
+        }
         public static bool AutoStyle { get { Refresh(); return autoStyle; } }
         public static bool Ground { get { Refresh(); return ground; } }
         public static bool ThreatRings { get { Refresh(); return threatRings; } }
@@ -1352,7 +1371,7 @@ namespace BrightQud
                 lush = v >= 13;
             }
             // Ambient floor: one step every ~1.2 s, offset per cell so the diamonds don't pulse together.
-            if ((lastAmbient || lush) && !creature && !memory && Settings.Animation)
+            if ((lastAmbient || lush) && !creature && !memory && Settings.TileAnimation)
                 frame = (XRL.Core.XRLCore.CurrentFrame / 75 + cell.X * 3 + cell.Y * 5) % 4;
             // Item sparkle twinkles on the beat (only on frame 1).
             if ((hud & 32) != 0 && beat == 0) hud &= ~32;
