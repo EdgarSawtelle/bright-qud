@@ -25,6 +25,8 @@ FAMILIES = {
     "marsh": ("4e5040", "54564a", "8a8a5c"),   # D' salt marsh: olive mud, salt crust, tufted grass
     "redrock": ("9b3f2b", "a1452e", "d9a07a"), # C' Red Rock surface: redder than the plain canyon
     "redcave": ("3b2622", "412a25", "8a5a48"), # C'' Red Rock caves: dark red-brown rubble floor
+    "rustwell": ("874a33", "8d4f37", "c8743c"),  # Rust Wells surface: rust dust with flaking iron
+    "rustcave": ("2f2723", "352c27", "b0602e"),  # Rust Wells strata: bitumen-dark floor, rust flakes
 }
 
 
@@ -157,6 +159,31 @@ def cave(t, base, acc):
             t.put(x + dx, y + (dx > 1), shade(acc, 0.62, 0.8))
 
 
+def rustflake(t, base, acc):
+    """Rust Wells: rust dust and flakes of 'moisture-sucked rust' shed by the qudzu."""
+    rust(t, base, acc)
+    for _ in range(t.rnd.randrange(3, 6)):                 # orange rust flakes, low contrast
+        x, y = t.rnd.randrange(1, 15), t.rnd.randrange(1, 23)
+        c = tuple(round(base[i] + (acc[i] - base[i]) * 0.45) for i in range(3)) + (255,)
+        t.put(x, y, c)
+        if t.rnd.random() < 0.5:
+            t.put(x + 1, y, c)
+
+
+def bitumen(t, base, acc):
+    """Rust Wells strata: dark bitumen-and-gravel floor with pale gravel and rust flakes."""
+    t.grain(base, 30, 0.88, 1.14)
+    for _ in range(t.rnd.randrange(3, 6)):                 # pale carbon gravel islands
+        x, y = t.rnd.randrange(1, 15), t.rnd.randrange(1, 23)
+        t.put(x, y, shade(base, 1.35, 0.4))
+        t.put(x, y + 1, shade(base, 0.85))
+    for _ in range(t.rnd.randrange(2, 4)):                 # rust flakes
+        x, y = t.rnd.randrange(1, 15), t.rnd.randrange(1, 23)
+        t.put(x, y, tuple(round(base[i] + (acc[i] - base[i]) * 0.4) for i in range(3)) + (255,))
+    if t.rnd.random() < 0.5:                               # a hairline trench
+        t.line(base, t.rnd.randrange(0, 10), t.rnd.randrange(3, 21), t.rnd.randrange(4, 7), 0.78)
+
+
 def marsh(t, base, acc):
     t.grain(base, 30)
     for _ in range(t.rnd.randrange(2, 4)):                 # tufted marsh grass: olive-golden blades
@@ -174,7 +201,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen}
 
 
 def tiles(family):

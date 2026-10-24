@@ -1435,6 +1435,11 @@ namespace BrightQud
                     ch.Foreground = ZoneLiquid(kind, ch.Foreground, false);
                     ch.Detail = ZoneLiquid(kind, ch.Detail, true);
                 }
+                else if (top != null && (top.Blueprint.Contains("Fulcrete") || top.Blueprint == "TombSultan6Wall"))
+                {
+                    ch.Foreground = FulcreteGravel;
+                    ch.Detail = FulcreteBitumen;
+                }
                 else if (top != null && top.Blueprint == "Verdigris")
                 {
                     // Tarnished chrome: dull green-grey metal, not glossy cyan.
@@ -1693,12 +1698,15 @@ namespace BrightQud
         // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
-        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave" };
+        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
+            "rustwell", "rustcave" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25") };
-        const int FamilyRedRock = 6, FamilyRedCave = 7;
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27") };
+        const int FamilyRedRock = 6, FamilyRedCave = 7, FamilyRustWell = 8, FamilyRustCave = 9;
+        // Fulcrete: "islands of carbon gravel in an ocean of bitumen" - tar-dark with pale gravel.
+        static readonly Color FulcreteGravel = Hex("8a857c"), FulcreteBitumen = Hex("2a2826");
         static bool underground; // cached zone is below the surface (lights are always "at night")
         const int FamilyMarsh = 5;
         // Salt marsh water: silvery brackish grey-blue, as in real salt marshes (zone study 02).
@@ -1720,7 +1728,9 @@ namespace BrightQud
                     return 0;
                 case "TerrainRedRock":
                     return FamilyRedRock;   // "a naturally reddened outcropping": redder than the canyon
-                case "TerrainRustWell": case "TerrainBethesdaSusa": case "TerrainRustedArchway":
+                case "TerrainRustWell":
+                    return FamilyRustWell;  // rust dust with flakes shed by the qudzu
+                case "TerrainBethesdaSusa": case "TerrainRustedArchway":
                     return 2;
                 case "TerrainJungle": case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
@@ -1749,9 +1759,9 @@ namespace BrightQud
                 if (zone.Z > 10)
                 {
                     // Underground: Red Rock's four strata get their red-brown rubble floor.
-                    if (bp == "TerrainRedRock")
+                    if (bp == "TerrainRedRock" || bp == "TerrainRustWell")
                     {
-                        zoneFamily = FamilyRedCave;
+                        zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : FamilyRustCave;
                         return KindFamily;
                     }
                     return KindPlain;

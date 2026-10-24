@@ -33,7 +33,8 @@ Every helper below has its own switch in **Options → Mods**.
   tufts and tiny mushrooms, a few of them slowly glowing; Joppa sits on textured, salt-spangled earth; deserts,
   canyons, jungles and hills get calm, finely textured ground (animated tiles are off by default).
   At night and underground, torch posts and campfires cast warm pools of light. Red Rock gets
-  redder rock above and a red-brown rubble floor in its caves. Frogs, reptiles and Templars redrawn.
+  redder rock above and a red-brown rubble floor in its caves; the Rust Wells get rust-flaked
+  ground, tar-dark floors below, and fulcrete looks like bitumen with pale gravel. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |
