@@ -581,8 +581,9 @@ namespace BrightQud
 
         static exTextureInfo Build(Request req)
         {
-            string frameKey = "brightqudframe/" + req.Key;
-            bool altFrame = req.Frame == 1 && IsOurs(frameKey);
+            // Frame 1: brightqudframe/<key>; ambient tiles also have frames 2-3 (brightqudframe2/, 3/).
+            string frameKey = (req.Frame <= 1 ? "brightqudframe/" : "brightqudframe" + req.Frame + "/") + req.Key;
+            bool altFrame = req.Frame >= 1 && IsOurs(frameKey);
             Color[] px = altFrame ? Recolored(frameKey, req.Fg, req.Detail)
                 : IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
                 : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail)), 16, 24, req.Style)
@@ -1314,6 +1315,7 @@ namespace BrightQud
             pendingEvent = null;
             if (!pendingExplored) return;
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
+            XRL.World.GameObject top = lastTop;
             if (memory) hud = 0;
             if (!isPlayer && Settings.Ground && cell.ParentZone != null && cell.ParentZone.IsWorldMap())
             {
@@ -1333,6 +1335,25 @@ namespace BrightQud
                 ch.Background = QudColor.ColorMap['k'];
             }
             if (creature && !memory && Settings.Animation) frame = beat;
+            if (lastCrystal) ch.Foreground = Color.Lerp(ch.Foreground, Lavender, 0.35f);
+            // Black marble: cool dark stone with pale lavender-grey veins (the game's veins are tan).
+            if (lastMarble)
+            {
+                ch.Foreground = MarbleStone;
+                ch.Detail = MarbleVein;
+            }
+            // Rainbow Wood: the painted grass/dirt becomes lush moss, tufts and tiny mushrooms.
+            bool lush = false;
+            if (top == null && Settings.Ground && e.Tile != null && e.Tile == cell.PaintTile && ZoneKind(cell) == KindFungal)
+            {
+                int h = Hash(cell.X, cell.Y);
+                int v = h % 100 < 35 ? (h / 100) % 2 : 2 + (h / 100) % 14;
+                ch._Tile = LushTiles[v];
+                lush = v >= 13;
+            }
+            // Ambient floor: one step every ~1.2 s, offset per cell so the diamonds don't pulse together.
+            if ((lastAmbient || lush) && !creature && !memory && Settings.Animation)
+                frame = (XRL.Core.XRLCore.CurrentFrame / 75 + cell.X * 3 + cell.Y * 5) % 4;
             // Item sparkle twinkles on the beat (only on frame 1).
             if ((hud & 32) != 0 && beat == 0) hud &= ~32;
             // Low-health pulse: red on one beat, the normal player ring (if on) on the other.
@@ -1373,6 +1394,10 @@ namespace BrightQud
 
         // Walkability tier of the object whose tile the cell shows (same tiers as the hand-drawn art).
         [ThreadStatic] static bool lastBurning;
+        [ThreadStatic] static bool lastAmbient; // Moon Stair floor: diamonds twinkle (4 slow frames)
+        [ThreadStatic] static bool lastMarble; // black marble walls and walkways
+        [ThreadStatic] static XRL.World.GameObject lastTop; // object the cell shows, null for bare ground
+        [ThreadStatic] static bool lastCrystal; // Moon Stair crystal or its floor: colors pulled toward lavender
         [ThreadStatic] static Color lastBaseFg;
 
         // The object's own foreground color (effects like Burning flicker the drawn one).
@@ -1394,6 +1419,10 @@ namespace BrightQud
         static int StyleOf(Cell cell, string tile, out int mutations, out bool creature, out bool player, out int hud)
         {
             lastBurning = false;
+            lastAmbient = false;
+            lastCrystal = false;
+            lastMarble = false;
+            lastTop = null;
             mutations = 0;
             creature = false;
             player = false;
@@ -1407,6 +1436,10 @@ namespace BrightQud
                     top = o;
             }
             if (top == null) return Recolor.StyleNone;
+            lastTop = top;
+            lastAmbient = top.Blueprint == "SmallHexFloor";
+            lastCrystal = lastAmbient || top.Blueprint == "CrystalWall";
+            lastMarble = top.Blueprint == "Black Marble" || top.Blueprint == "BlackMarbleWalkway";
             lastBurning = Settings.FireOverlay && top.HasEffect<XRL.World.Effects.Burning>();
             if (lastBurning) lastBaseFg = BaseColor(top);
             if (top.Brain != null)
@@ -1532,11 +1565,84 @@ namespace BrightQud
         {
             long turn = The.CurrentTurn;
             if (zone == cachedZone && enclosed != null && turn - cachedTurn < RefreshTurns && turn >= cachedTurn) return;
-            enclosed = ComputeEnclosed(zone);
-            outdoor = ComputeOutdoor(zone);
+            zoneKind = KindOf(zone);
+            // Moon Stair surface: lavender ground everywhere (crystal clusters are not buildings).
+            bool moon = zoneKind == KindMoon;
+            enclosed = moon ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
+            outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone) : ComputeOutdoor(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
             cachedZone = zone;
             cachedTurn = turn;
+        }
+
+        // Dusky lavender slate, after the community's painting of the Stair (pastel crystals, cool light).
+        static readonly Color MarbleDark = Hex("2c2840");
+        static readonly Color MarbleLight = Hex("352f4c");
+        static readonly Color Lavender = Hex("b4a0ff");
+        static readonly Color MarbleStone = Hex("221e30");
+        static readonly Color MarbleVein = Hex("8c86b8");
+
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2;
+        static int zoneKind;
+        static readonly Color MossDark = Hex("202116");
+        static readonly Color MossLight = Hex("2a2b1c");
+        static readonly Color MossWarm = Hex("4a2e1a"); // a few lava-lit patches
+
+        // Surface zones with their own look: the Moon Stair and the Rainbow Wood.
+        static int KindOf(Zone zone)
+        {
+            if (zone.IsWorldMap() || zone.Z != 10) return KindPlain;
+            try
+            {
+                string bp = zone.GetTerrainObject()?.Blueprint;
+                if (bp == "TerrainMoonStair") return KindMoon;
+                if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
+            }
+            catch (Exception) { }
+            return KindPlain;
+        }
+
+        // Zone kind of the active zone (refreshes the cached ground like ColorFor does).
+        static int ZoneKind(Cell cell)
+        {
+            Zone zone = cell.ParentZone;
+            if (zone == null || zone.IsInside()) return KindPlain;
+            Refresh(zone);
+            return zoneKind;
+        }
+
+        // Rainbow Wood: dark olive moss where the sun does not reach, a few warm patches.
+        static Color[,] Moss(Zone zone)
+        {
+            var result = new Color[zone.Width, zone.Height];
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                {
+                    int h = Hash(x, y);
+                    Color c = Color.Lerp(MossDark, MossLight, (h % 7) / 6f);
+                    result[x, y] = h % 100 < 12 ? Color.Lerp(c, MossWarm, 0.5f) : c;
+                }
+            return result;
+        }
+
+        static readonly string[] LushTiles = BuildLushTiles(); // no string building per cell per frame
+
+        static string[] BuildLushTiles()
+        {
+            var t = new string[16];
+            for (int i = 0; i < t.Length; i++) t[i] = "brightqudlush/" + i;
+            return t;
+        }
+
+        static int Hash(int x, int y) => ((x * 73856093) ^ (y * 19349663)) & 0x7fffffff;
+
+        static Color[,] Marble(Zone zone)
+        {
+            var result = new Color[zone.Width, zone.Height];
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                    result[x, y] = Color.Lerp(MarbleDark, MarbleLight, ((x * 7 + y * 13) % 5) / 4f);
+            return result;
         }
 
         // The game paints neighbouring cells randomly (grass/dirt), which gives a checkerboard if used

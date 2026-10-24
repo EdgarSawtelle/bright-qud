@@ -27,6 +27,9 @@ Every helper below has its own switch in **Options → Mods**.
   colours and outlines, so the whole world matches.
 - **Player look**: pick a sprite for your character (Gunslinger, Mystic, Tinker, Warden...).
 - **Idle animation**: creatures bob gently and wings flap.
+- **Zones with their own look**: the Moon Stair has whole crystals made of leaning lavender shards
+  on a sci-fi hexagon floor whose lights slowly twinkle; the Rainbow Wood is lush dark moss with
+  tufts and tiny mushrooms, a few of them slowly glowing. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |

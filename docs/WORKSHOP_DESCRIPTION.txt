@@ -9,6 +9,8 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
 [*]Seed-generated colours are kept; tiles from other mods get an automatic matching restyle
 [*]Choose your character's look; gentle idle animation
+[*]Zones with their own look: lavender crystal Moon Stair with a twinkling hexagon floor, lush mossy Rainbow Wood with tiny glowing mushrooms
+[*]Redrawn frogs (svardym), reptiles and Putus Templars
 [/list]
 
 [h2]Easier to read the map[/h2]

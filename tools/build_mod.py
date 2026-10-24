@@ -38,6 +38,9 @@ APPROVED_BATCHES = {"items3", "kit3a", "kit3b", "items4_7", "items4_6", "items4_
 # B3 character restyle (docs/B3_RESTYLE_BRIEF.md): modules whose OVERRIDES replace the old sprites.
 # b3kit also replaces the player looks and mutation overlays.
 B3_BATCHES = ["b3kit", "b3_castes", "b3_beasts", "b3_odd", "b3_deep", "b3_wilds", "b3_people"]
+# Family redraws (docs/b3_worklists/families.md) and zone sets: built last, they replace earlier
+# sprites by tile key.
+FAMILY_BATCHES = ["fam_frogs", "fam_reptiles", "fam_templars", "moonstair"]
 RESTYLED = set()  # names whose hand-drawn idle frame no longer matches
 
 
@@ -225,6 +228,20 @@ def targets(idx):
     for n in (1, 2, 3):
         for k in family_keys(idx, f"tiles/sw/axle/{n}/"):
             add(k, IT.axle(k[len(f"tiles/sw/axle/{n}/"):]), "object", example="WoodenMechanicalTransmission")
+    # --- Family redraws (art/src/fam_*.py): replace whatever drew these keys before ---
+    for mod_name in FAMILY_BATCHES:
+        m = importlib.import_module(mod_name)
+        humans = getattr(m, "HUMANOID", set())
+        for k, v in m.KEYS.items():
+            if k not in idx:
+                continue
+            name, kind = v if isinstance(v, tuple) else (v, "object")
+            t[:] = [x for x in t if x[0] != k]
+            add(k, m.SPRITES[name], kind)
+            if name in humans:
+                HUMANOID.add(k)
+            else:
+                HUMANOID.discard(k)
     return t
 
 
@@ -291,6 +308,26 @@ def main():
             img, mask = B.render(grid, "object", fg=fg, detail=det, with_mask=True)
             write(img, flat_name("brightqudframe/" + k))
             write(mask, "BrightQudMask/" + flat_name("brightqudframe/" + k))
+    # Slow ambient frames (Moon Stair floor twinkle): frames 1-3 as brightqudframe{,2,3}/<key>;
+    # the runtime cycles them with a per-cell offset.
+    import moonstair
+    for k, frames in moonstair.FRAMES.items():
+        ex = (sorted(users.get(k, []))[:1] or [None])[0]
+        fg, det = color_letters(bp, ex) if ex else ("m", "m")
+        for i, grid in enumerate(frames, 1):
+            fk = ("brightqudframe" if i == 1 else f"brightqudframe{i}") + "/" + k
+            img, mask = B.render(grid, "terrain", fg=fg, detail=det, with_mask=True)
+            write(img, flat_name(fk))
+            write(mask, "BrightQudMask/" + flat_name(fk))
+    # Rainbow Wood lush floor tiles (runtime picks one per cell) and their breathing frames.
+    import rainbowwood
+    for k, grid in rainbowwood.SPRITES.items():
+        frames = [grid] + rainbowwood.FRAMES.get(k, [])
+        for i, fr in enumerate(frames):
+            fk = k if i == 0 else ("brightqudframe" if i == 1 else f"brightqudframe{i}") + "/" + k
+            img, mask = B.render(fr, "terrain", fg="g", detail="g", with_mask=True)
+            write(img, flat_name(fk))
+            write(mask, "BrightQudMask/" + flat_name(fk))
     # Player looks, chosen in the game's Options (see Options.xml, written below).
     looks = K.player_looks(S)
     if "b3kit" in B3_BATCHES:
