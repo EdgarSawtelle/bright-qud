@@ -1600,8 +1600,9 @@ namespace BrightQud
         {
             Zone zone = cell.ParentZone;
             if (zone == null) return Earth;
-            if (zone.IsInside()) return Stone;
+            // (Inside zones are refreshed too: their fixed lights cast warm pools on the stone.)
             Refresh(zone);
+            if (zone.IsInside() && !(underground && zoneKind == KindFamily)) return Stone;
             int x = cell.X, y = cell.Y;
             if (x < 0 || y < 0 || x >= enclosed.GetLength(0) || y >= enclosed.GetLength(1)) return Earth;
             if (enclosed[x, y]) return Indoor;
@@ -1659,9 +1660,11 @@ namespace BrightQud
             long turn = The.CurrentTurn;
             if (zone == cachedZone && enclosed != null && turn - cachedTurn < RefreshTurns && turn >= cachedTurn) return;
             zoneKind = KindOf(zone);
-            // Moon Stair surface: lavender ground everywhere (crystal clusters are not buildings).
+            underground = !zone.IsWorldMap() && zone.Z > 10;
+            // Moon Stair surface: lavender ground everywhere (crystal clusters are not buildings);
+            // underground family zones: caves are not buildings either.
             bool moon = zoneKind == KindMoon;
-            enclosed = moon ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
+            enclosed = moon || (underground && zoneKind == KindFamily) ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
             outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
@@ -1690,9 +1693,13 @@ namespace BrightQud
         // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
-        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh" };
-        static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040") };
-        static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a") };
+        static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave" };
+        static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
+            Hex("9b3f2b"), Hex("3b2622") };
+        static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
+            Hex("a1452e"), Hex("412a25") };
+        const int FamilyRedRock = 6, FamilyRedCave = 7;
+        static bool underground; // cached zone is below the surface (lights are always "at night")
         const int FamilyMarsh = 5;
         // Salt marsh water: silvery brackish grey-blue, as in real salt marshes (zone study 02).
         static readonly Color MarshWater = Hex("8fa6a8"), MarshWaterLight = Hex("c4d2d2");
@@ -1711,7 +1718,9 @@ namespace BrightQud
             {
                 case "TerrainSixDayStilt": case "TerrainHills": case "TerrainMountains": case "TerrainMountainsSpindleShadow":
                     return 0;
-                case "TerrainRedRock": case "TerrainRustWell": case "TerrainBethesdaSusa": case "TerrainRustedArchway":
+                case "TerrainRedRock":
+                    return FamilyRedRock;   // "a naturally reddened outcropping": redder than the canyon
+                case "TerrainRustWell": case "TerrainBethesdaSusa": case "TerrainRustedArchway":
                     return 2;
                 case "TerrainJungle": case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
@@ -1733,10 +1742,20 @@ namespace BrightQud
         // Surface zones with their own look: the Moon Stair and the Rainbow Wood.
         static int KindOf(Zone zone)
         {
-            if (zone.IsWorldMap() || zone.Z != 10) return KindPlain;
+            if (zone.IsWorldMap() || zone.Z < 10) return KindPlain;
             try
             {
                 string bp = zone.GetTerrainObject()?.Blueprint;
+                if (zone.Z > 10)
+                {
+                    // Underground: Red Rock's four strata get their red-brown rubble floor.
+                    if (bp == "TerrainRedRock")
+                    {
+                        zoneFamily = FamilyRedCave;
+                        return KindFamily;
+                    }
+                    return KindPlain;
+                }
                 if (bp == "TerrainMoonStair") return KindMoon;
                 if (bp == "TerrainJoppa" || bp == "TerrainJoppaRuins") return KindJoppa;
                 if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
@@ -1758,9 +1777,9 @@ namespace BrightQud
         static int ZoneKind(Cell cell)
         {
             Zone zone = cell.ParentZone;
-            if (zone == null || zone.IsInside()) return KindPlain;
+            if (zone == null) return KindPlain;
             Refresh(zone);
-            return zoneKind;
+            return zone.IsInside() && !(underground && zoneKind == KindFamily) ? KindPlain : zoneKind;
         }
 
         // Rainbow Wood: dark olive moss where the sun does not reach, a few warm patches.
@@ -1811,7 +1830,7 @@ namespace BrightQud
         static void ComputeLight(Zone zone)
         {
             light = null;
-            try { night = !XRL.World.Calendar.IsDay(); } catch (Exception) { night = false; }
+            try { night = underground || !XRL.World.Calendar.IsDay(); } catch (Exception) { night = underground; }
             if (!night || zone.IsWorldMap()) return;
             var l = new float[zone.Width, zone.Height];
             bool any = false;

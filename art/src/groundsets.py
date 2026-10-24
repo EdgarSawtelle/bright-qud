@@ -23,6 +23,8 @@ FAMILIES = {
     "green": ("3d3a28", "433f2b", "4f6a32"),   # D green shade (jungle, marsh)
     "teal":  ("1e2c2c", "233232", "4a6e6a"),   # E dark teal (caves, sacred, tech)
     "marsh": ("4e5040", "54564a", "8a8a5c"),   # D' salt marsh: olive mud, salt crust, tufted grass
+    "redrock": ("9b3f2b", "a1452e", "d9a07a"), # C' Red Rock surface: redder than the plain canyon
+    "redcave": ("3b2622", "412a25", "8a5a48"), # C'' Red Rock caves: dark red-brown rubble floor
 }
 
 
@@ -140,6 +142,21 @@ def teal(t, base, acc):
         t.put(t.rnd.randrange(2, 14), t.rnd.randrange(2, 22), shade(acc, 1.1, 0.7))
 
 
+def cave(t, base, acc):
+    t.grain(base, 30, 0.9, 1.1)
+    for _ in range(t.rnd.randrange(2, 4)):                 # rubble: small stones with an under-shadow
+        t.pebble(base, t.rnd.randrange(1, 14), t.rnd.randrange(2, 21), t.rnd.choice((1, 2)))
+    for _ in range(t.rnd.randrange(1, 3)):                 # shale chips
+        x, y = t.rnd.randrange(0, 12), t.rnd.randrange(2, 22)
+        for i in range(t.rnd.randrange(2, 4)):
+            t.put(x + i, y, shade(base, 1.2))
+            t.put(x + i, y + 1, shade(base, 0.8))
+    if t.rnd.random() < 0.4:                               # red dust drift
+        x, y = t.rnd.randrange(2, 12), t.rnd.randrange(3, 21)
+        for dx in range(4):
+            t.put(x + dx, y + (dx > 1), shade(acc, 0.62, 0.8))
+
+
 def marsh(t, base, acc):
     t.grain(base, 30)
     for _ in range(t.rnd.randrange(2, 4)):                 # tufted marsh grass: olive-golden blades
@@ -157,7 +174,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave}
 
 
 def tiles(family):
