@@ -19,7 +19,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Ring under you that pulses red at low health
 [*]Items on the ground sparkle; gold corner on stairs and filled containers (F6 or the controls reminder turns them on/off)
 [*]Speech bubble on merchants and named characters (fades once you've talked)
-[*]Remembered areas clearly dimmer than what you see; coloured ground instead of black
+[*]Remembered or dark areas dimmer but still in colour; coloured ground instead of black, with its own palette in the salt desert, Palladium Reef, Rainbow Wood and Moon Stair
 [*]Flames on burning things, no black squares behind gas, explosions or thrown items
 [*]World map: calmer colours; regions too dangerous for your level tinted orange / red, and looking at a region shows its level
 [/list]

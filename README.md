@@ -41,7 +41,7 @@ Every helper below has its own switch in **Options → Mods**.
 | Item sparkle | items lying on the ground twinkle |
 | Talk bubbles | speech bubble over merchants and named characters; it fades once you've talked |
 | Gold corners | stairs and containers that still hold items (F6 turns these and the sparkle off/on) |
-| Clear memory | remembered areas (out of sight) are clearly dimmer than what you see now |
+| Clear memory | remembered areas (out of sight, or too dark to see) are dimmer but keep their colours |
 | Coloured ground | real ground colours instead of black |
 | Fire and effects | flames drawn on burning things; no black squares behind gas, explosions or thrown items |
 | World map danger | regions too dangerous for your level are tinted orange (hard) or red (deadly); look at a region to see its level. World-map colours are toned down. |

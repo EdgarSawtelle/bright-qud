@@ -579,6 +579,8 @@ namespace BrightQud
             return outp;
         }
 
+        static readonly Color NightTint = new Color(0.08f, 0.1f, 0.18f, 1f);
+
         static exTextureInfo Build(Request req)
         {
             // Frame 1: brightqudframe/<key>; ambient tiles also have frames 2-3 (brightqudframe2/, 3/).
@@ -612,9 +614,10 @@ namespace BrightQud
                     if (c.a <= 0f) continue;
                     if (clear)
                     {
-                        // Faded but readable: 30% of the color, 72% of the brightness, a little teal.
+                        // Dim but still in colour (out of sight, or too dark to see): 65% of the
+                        // saturation, 70% of the brightness, a light night-blue tint.
                         Color.RGBToHSV(c, out float h, out float s, out float v);
-                        Color m = Color.Lerp(Color.HSVToRGB(h, s * 0.3f, v * 0.72f), memoryTint, 0.3f);
+                        Color m = Color.Lerp(Color.HSVToRGB(h, s * 0.65f, v * 0.7f), NightTint, 0.15f);
                         px[i] = new Color(m.r, m.g, m.b, c.a);
                         continue;
                     }
@@ -1291,6 +1294,10 @@ namespace BrightQud
         static readonly Color Stone = Hex("2c2f35");
         const int RefreshTurns = 25;
         static float MemoryFade => Settings.ClearMemory ? 0.35f : 0.55f;
+        // Remembered ground fades toward a dark night blue (the game's teal 'k' cast everything teal).
+        static Color MemoryGround => Settings.ClearMemory ? Hex("10141e") : QudColor.ColorMap['k'];
+        // Never-seen cells: near black instead of the game's teal, so what you know stands out.
+        static readonly Color Unexplored = Hex("0a0c10");
 
         // Set by the Cell.Render postfix, consumed by the ConsoleChar.Set postfix that Zone.Render
         // calls right after it with the same RenderEvent.
@@ -1332,7 +1339,16 @@ namespace BrightQud
             Cell cell = pendingCell;
             pendingCell = null;
             pendingEvent = null;
-            if (!pendingExplored) return;
+            if (!pendingExplored)
+            {
+                if (Settings.Ground && Settings.ClearMemory && IsDefault(ch.Background) && cell.ParentZone != null
+                    && !cell.ParentZone.IsWorldMap())
+                {
+                    ch.Background = Unexplored;
+                    if (ch._Tile == null && ch.Char == ' ') ch.Foreground = Unexplored;
+                }
+                return;
+            }
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
             XRL.World.GameObject top = lastTop;
             if (memory) hud = 0;
@@ -1370,6 +1386,40 @@ namespace BrightQud
                 ch._Tile = LushTiles[v];
                 lush = v >= 13;
             }
+            if (Settings.Ground && cell.ParentZone != null && !cell.ParentZone.IsWorldMap())
+            {
+                int kind = ZoneKind(cell);
+                if (kind == KindSalt && top == null
+                    && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.'))
+                {
+                    // The game leaves many salt cells bare; on light ground they read as flat squares.
+                    // Every bare cell gets one of the 12 dune ripple tiles, as soft darker-ivory lines.
+                    ch._Tile = DuneTiles[Hash(cell.X, cell.Y) % DuneTiles.Length];
+                    ch.Foreground = ch.Detail = SaltShadow;
+                }
+                else if (top == null && !lush && e.Tile != null && e.Tile == cell.PaintTile && kind != KindFungal)
+                {
+                    if (kind == KindSalt)
+                        ch.Foreground = ch.Detail = SaltShadow;
+                    else
+                    {
+                        // Zone average, not the cell's own ground: few distinct colours, so few cached textures.
+                        ch.Foreground = Calm(ch.Foreground, zoneGround);
+                        ch.Detail = Calm(ch.Detail, zoneGround);
+                    }
+                }
+                else if (top != null && top.LiquidVolume != null && kind != KindPlain)
+                {
+                    ch.Foreground = ZoneLiquid(kind, ch.Foreground, false);
+                    ch.Detail = ZoneLiquid(kind, ch.Detail, true);
+                }
+                else if (top != null && top.Blueprint == "Verdigris")
+                {
+                    // Tarnished chrome: dull green-grey metal, not glossy cyan.
+                    ch.Foreground = VerdigrisMetal;
+                    ch.Detail = VerdigrisPatina;
+                }
+            }
             // Ambient floor: one step every ~1.2 s, offset per cell so the diamonds don't pulse together.
             if ((lastAmbient || lush) && !creature && !memory && Settings.TileAnimation)
                 frame = (XRL.Core.XRLCore.CurrentFrame / 75 + cell.X * 3 + cell.Y * 5) % 4;
@@ -1395,17 +1445,18 @@ namespace BrightQud
                     underColor = lc;
                 else
                     underColor = IsDefault(ch.Background) ? QudColor.ColorMap['B'] : ch.Background;
+                underColor = ZoneLiquid(ZoneKind(cell), underColor, false);
                 // The game tints the whole cell with the liquid color; with the liquid drawn as a tile
                 // underneath, the rest of the cell should show the normal ground (puddles are small).
                 Color ground = ColorFor(cell);
-                ch.Background = memory ? Color.Lerp(ground, QudColor.ColorMap['k'], MemoryFade) : ground;
+                ch.Background = memory ? Color.Lerp(ground, MemoryGround, MemoryFade) : ground;
                 return;
             }
             if (!Settings.Ground) return;
             // Keep backgrounds an object asks for explicitly (anything but the default black 'k').
             if (!IsDefault(ch.Background)) return;
             Color g = ColorFor(cell);
-            if (memory) g = Color.Lerp(g, QudColor.ColorMap['k'], MemoryFade);
+            if (memory) g = Color.Lerp(g, MemoryGround, MemoryFade);
             ch.Background = g;
             // Empty text cells draw their "background" from Foreground (text shader swaps them).
             if (ch._Tile == null && ch.Char == ' ') ch.Foreground = g;
@@ -1588,8 +1639,15 @@ namespace BrightQud
             // Moon Stair surface: lavender ground everywhere (crystal clusters are not buildings).
             bool moon = zoneKind == KindMoon;
             enclosed = moon ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
-            outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone) : ComputeOutdoor(zone);
+            outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
+                : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
+                : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight) : ComputeOutdoor(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
+            Color sum = Color.clear;
+            foreach (Color c in outdoor) sum += c;
+            zoneGround = sum / outdoor.Length;
+            zoneGround = new Color(Mathf.Round(zoneGround.r * 32f) / 32f, Mathf.Round(zoneGround.g * 32f) / 32f,
+                Mathf.Round(zoneGround.b * 32f) / 32f, 1f);
             cachedZone = zone;
             cachedTurn = turn;
         }
@@ -1601,8 +1659,9 @@ namespace BrightQud
         static readonly Color MarbleStone = Hex("221e30");
         static readonly Color MarbleVein = Hex("8c86b8");
 
-        const int KindPlain = 0, KindMoon = 1, KindFungal = 2;
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4;
         static int zoneKind;
+        static Color zoneGround; // average outdoor ground of the cached zone (rounded)
         static readonly Color MossDark = Hex("202116");
         static readonly Color MossLight = Hex("2a2b1c");
         static readonly Color MossWarm = Hex("4a2e1a"); // a few lava-lit patches
@@ -1616,6 +1675,9 @@ namespace BrightQud
                 string bp = zone.GetTerrainObject()?.Blueprint;
                 if (bp == "TerrainMoonStair") return KindMoon;
                 if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
+                if (bp != null && (bp.StartsWith("TerrainSaltdunes", StringComparison.Ordinal)
+                    || bp == "TerrainTremblezone" || bp == "TerrainSixDayStilt")) return KindSalt;
+                if (bp != null && bp.StartsWith("TerrainPalladiumReef", StringComparison.Ordinal)) return KindReef;
             }
             catch (Exception) { }
             return KindPlain;
@@ -1646,11 +1708,58 @@ namespace BrightQud
 
         static readonly string[] LushTiles = BuildLushTiles(); // no string building per cell per frame
 
+        static readonly string[] DuneTiles = BuildDuneTiles();
+
+        static string[] BuildDuneTiles()
+        {
+            var t = new string[12];
+            for (int i = 0; i < t.Length; i++) t[i] = "Terrain/sw_ground_dune_" + (i + 1) + ".png";
+            return t;
+        }
+
         static string[] BuildLushTiles()
         {
             var t = new string[16];
             for (int i = 0; i < t.Length; i++) t[i] = "brightqudlush/" + i;
             return t;
+        }
+
+        // Salt desert: sun-bleached ivory (the shared formula made it dark grey). Reef: the dark teal
+        // islands of the official map art, so the sky-blue water and red coral stand out.
+        static readonly Color SaltDark = Hex("a2967e"), SaltLight = Hex("ab9f87"), SaltShadow = Hex("877c66");
+        static readonly Color ReefDark = Hex("1d3536"), ReefLight = Hex("233f40");
+        static readonly Color ReefWater = Hex("4aa8d8"), Algae = Hex("3fae3a");
+        static readonly Color SoupTeal = Hex("2f6e66"), LavaLight = Hex("d8843c");
+        static readonly Color VerdigrisMetal = Hex("5f857e"), VerdigrisPatina = Hex("4a6a4c");
+
+        static Color[,] Flat(Zone zone, Color a, Color b)
+        {
+            var result = new Color[zone.Width, zone.Height];
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                    result[x, y] = Color.Lerp(a, b, (Hash(x, y) % 5) / 4f);
+            return result;
+        }
+
+        // Specks and ripples painted on bare ground take the ground's own hue: texture, not water.
+        static Color Calm(Color c, Color ground)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            return Color.Lerp(Color.HSVToRGB(h, s * 0.5f, v), ground, 0.35f);
+        }
+
+        // Liquids in zones with their own look.
+        static Color ZoneLiquid(int kind, Color c, bool detail)
+        {
+            if (kind == KindReef)
+            {
+                Color.RGBToHSV(c, out float h, out float _, out float _);
+                bool algae = h > 0.17f && h < 0.45f;
+                return detail ? (algae ? Algae : Color.Lerp(c, ReefWater, 0.3f)) : algae ? ReefWater : Color.Lerp(c, ReefWater, 0.5f);
+            }
+            if (kind == KindFungal) // primordial soup "cast in the light of lava"
+                return detail ? Color.Lerp(c, LavaLight, 0.6f) : Color.Lerp(c, SoupTeal, 0.55f);
+            return c;
         }
 
         static int Hash(int x, int y) => ((x * 73856093) ^ (y * 19349663)) & 0x7fffffff;
@@ -1696,7 +1805,8 @@ namespace BrightQud
                             n++;
                         }
                     // World map regions are large and distinct: keep more of the local color there.
-                    Color c = Color.Lerp(avg, acc / n, worldMap ? 0.85f : 0.5f);
+                    // (0.35: neighbouring cells differ less, so the ground doesn't show tile-sized squares)
+                    Color c = Color.Lerp(avg, acc / n, worldMap ? 0.85f : 0.35f);
                     c.a = 1f;
                     result[x, y] = c;
                 }

@@ -112,7 +112,7 @@ def memory_now(img):
     return img
 
 
-def memory_new(img, tint, amount=0.2):
+def memory_new(img, tint=(20, 26, 46), amount=0.15):
     """Proposal: keep each colour's hue at reduced saturation/brightness, pulled toward the zone's
     night/memory tint, so a remembered reef still reads as a reef."""
     px = img.load()
@@ -120,7 +120,7 @@ def memory_new(img, tint, amount=0.2):
         for x in range(img.width):
             r, g, b, a = px[x, y]
             h, s, v = hsv((r, g, b))
-            c = rgb(h, s * 0.78, v * 0.86)
+            c = rgb(h, s * 0.65, v * 0.7)       # as BrightQud.cs (0.21.2)
             px[x, y] = lerp(c, tint, amount) + (a,)
     return img
 
@@ -208,10 +208,10 @@ zone(
         "@": ("Creatures/sw_gunwing.bmp", "y", "K", "creature"),
     },
     proposal=dict(
-        ground=("1c2050", "2a1f5a"), speck="7fe0ff", liquid="1640a0", liquid_detail="5ad0ff",
-        key="5a6cff", grade=0.0, night="141238",
-        mood="A jewel box: deep ultramarine/indigo sea-floor so coral pink, orange and gold polyps "
-             "and silver-cyan struts glow. Rich, wondrous and dangerous.",
+        ground=("1d3536", "233f40"), speck="5a8a86", liquid="4aa8d8", liquid_detail="3fae3a",
+        key="5a6cff", grade=0.0, night="141a2e", night_amount=0.15,
+        mood="As built, after the official Reef map art: sky-blue water with green algae swirls (not a "
+             "green slab), dark teal islands so red coral and polyps stand out, calm ground specks.",
     ),
 )
 
@@ -297,10 +297,10 @@ zone(
     },
     dune=True,
     proposal=dict(
-        ground=("cfc4a4", "bdb397"), speck="9a8fb0", liquid="3fb4ff", liquid_detail="d0f0ff",
-        key="e8dcb8", grade=0.0, night="2a2a5a", night_amount=0.3,
-        mood="Light ground for once: sun-bleached ivory with lavender shadow ripples. Glaring, empty, "
-             "beautiful. Night turns it a cold blue-violet, not black.",
+        ground=("a2967e", "ab9f87"), speck="877c66", liquid="3fb4ff", liquid_detail="d0f0ff",
+        key="e8dcb8", grade=0.0, night="141a2e", night_amount=0.15,
+        mood="As built: sun-bleached ivory salt, dune ripples drawn as soft darker-ivory shadows "
+             "(no cyan/white dashes that read as water), neighbouring cells barely differ.",
     ),
 )
 
@@ -581,7 +581,7 @@ def ground_tile(ch, z, rnd):
     if ch == "~":
         return WATER
     if z.get("dune"):
-        return rnd.choice(DUNE) if rnd.random() < 0.5 else None
+        return rnd.choice(DUNE) if rnd.random() < 0.5 or z.get("dune_all") else None
     if ch == ",":
         return rnd.choice(GRASS)
     if ch == ".":
@@ -622,7 +622,7 @@ def build(zname, mode, remembered=False):
     for y, row in enumerate(z["rows"]):
         for x, ch in enumerate(row):
             paint = z["paint"][rnd.random() < 0.5]
-            gt = ground_tile(ch if ch in ".,~ " else under_of(row, x), z, rnd)
+            gt = ground_tile(ch if ch in ".,~ " else under_of(row, x), dict(z, dune_all=mode == "new"), rnd)
             # background
             if mode == "vanilla":
                 bg = q("C") if gt == WATER and z["liquid"] == ("g", "C") else q("k")
