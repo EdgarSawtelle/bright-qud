@@ -27,7 +27,12 @@ FAMILIES = {
     "redcave": ("3b2622", "412a25", "8a5a48"), # C'' Red Rock caves: dark red-brown rubble floor
     "rustwell": ("874a33", "8d4f37", "c8743c"),  # Rust Wells surface: rust dust with flaking iron
     "rustcave": ("2f2723", "352c27", "b0602e"),  # Rust Wells strata: bitumen-dark floor, rust flakes
+    "jungle": ("3a3022", "3f3427", "3c6a2c"),    # Jungle: dark wet loam, leaf litter, roots, moss
 }
+
+# Jungle sunflecks: the ground brightens a little toward this colour in large soft patches (runtime
+# value noise over ~5 cells, never per cell) - "deep shade with a few bright leaf-lit patches".
+SUNFLECK = "5c5230"
 
 
 def hx(h):
@@ -201,7 +206,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green}
 
 
 def tiles(family):

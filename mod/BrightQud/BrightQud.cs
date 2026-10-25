@@ -1674,7 +1674,8 @@ namespace BrightQud
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
                 : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight)
-                : zoneKind == KindFamily ? Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily]) : ComputeOutdoor(zone);
+                : zoneKind == KindFamily ? (zoneFamily == FamilyJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], SunFleck)
+                    : Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily])) : ComputeOutdoor(zone);
             ComputeLight(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
             Color sum = Color.clear;
@@ -1699,11 +1700,14 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave" };
+            "rustwell", "rustcave", "jungle" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27") };
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427") };
+        const int FamilyJungle = 10;
+        // Jungle: "deep shade with a few bright leaf-lit patches" - soft sunflecks over several cells.
+        static readonly Color SunFleck = Hex("5c5230");
         const int FamilyRedRock = 6, FamilyRedCave = 7, FamilyRustWell = 8, FamilyRustCave = 9;
         // Fulcrete: "islands of carbon gravel in an ocean of bitumen" - tar-dark with pale gravel.
         static readonly Color FulcreteGravel = Hex("8a857c"), FulcreteBitumen = Hex("2a2826");
@@ -1732,7 +1736,9 @@ namespace BrightQud
                     return FamilyRustWell;  // rust dust with flakes shed by the qudzu
                 case "TerrainBethesdaSusa": case "TerrainRustedArchway":
                     return 2;
-                case "TerrainJungle": case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
+                case "TerrainJungle":
+                    return FamilyJungle;
+                case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
                 case "TerrainGritGate":
                     return 4;
@@ -1834,6 +1840,7 @@ namespace BrightQud
 
         // Warm pools of light around fixed light sources (torch posts, campfires...) at night.
         static float[,] light;
+        static Color[,] lightColor;
         static bool night;
         static readonly Color TorchWarm = Hex("ffaa5a");
 
@@ -1843,13 +1850,19 @@ namespace BrightQud
             try { night = underground || !XRL.World.Calendar.IsDay(); } catch (Exception) { night = underground; }
             if (!night || zone.IsWorldMap()) return;
             var l = new float[zone.Width, zone.Height];
+            var lc = new Color[zone.Width, zone.Height];
             bool any = false;
             foreach (XRL.World.GameObject o in zone.GetObjectsWithPart("LightSource"))
             {
                 var src = o.GetPart<XRL.World.Parts.LightSource>();
                 Cell c = o.CurrentCell;
-                if (src == null || !src.Lit || c == null || o.Brain != null) continue; // fixed lights only
+                // Fixed lights only: furniture, and rooted glowing life (glowpads) that never moves.
+                if (src == null || !src.Lit || c == null || (o.Brain != null && o.Brain.Mobile)) continue;
                 int r = Math.Min(Math.Max(src.Radius, 2), 6);
+                // Fire is warm; anything else lights in its own colour (glowpad magenta, glowing fungus...).
+                string bpn = o.Blueprint;
+                Color col = bpn.Contains("Torch") || bpn.Contains("Campfire") || bpn.Contains("Brazier") || bpn.Contains("Oven")
+                    || bpn.Contains("Forge") || bpn.Contains("Fire") ? TorchWarm : Color.Lerp(BaseColor(o), Color.white, 0.3f);
                 for (int dx = -r; dx <= r; dx++)
                     for (int dy = -r; dy <= r; dy++)
                     {
@@ -1858,11 +1871,16 @@ namespace BrightQud
                         float d = Mathf.Sqrt(dx * dx + dy * dy) / r;
                         if (d >= 1f) continue;
                         float f = Mathf.Pow(1f - d, 1.5f);
-                        if (f > l[x, y]) l[x, y] = f;
+                        if (f > l[x, y])
+                        {
+                            l[x, y] = f;
+                            lc[x, y] = col;
+                        }
                         any = true;
                     }
             }
             light = any ? l : null;
+            lightColor = any ? lc : null;
         }
 
         // Ground under torch light: brighter and warmer, with a slow flicker.
@@ -1877,7 +1895,7 @@ namespace BrightQud
             float k = f * 0.55f * flicker;
             Color b = new Color(Mathf.Min(1f, g.r * (1f + k * 1.2f)), Mathf.Min(1f, g.g * (1f + k * 1.2f)),
                 Mathf.Min(1f, g.b * (1f + k * 1.2f)), 1f);
-            return Color.Lerp(b, TorchWarm, k * 0.35f);
+            return Color.Lerp(b, lightColor != null ? lightColor[x, y] : TorchWarm, k * 0.35f);
         }
 
         static string[] BuildTiles(string prefix, int n)
@@ -1897,6 +1915,32 @@ namespace BrightQud
                 for (int y = 0; y < zone.Height; y++)
                     result[x, y] = Color.Lerp(a, b, (Hash(x, y) % 5) / 4f);
             return result;
+        }
+
+        // Flat ground brightened toward a light colour in large soft patches (smooth value noise over
+        // ~5 cells, never per cell): sunflecks under a canopy.
+        static Color[,] Dappled(Zone zone, Color a, Color b, Color fleck)
+        {
+            Color[,] result = Flat(zone, a, b);
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                {
+                    float k = Mathf.Max(0f, Noise(x, y, 5f) - 0.5f) / 0.5f * 0.7f;
+                    result[x, y] = Color.Lerp(result[x, y], fleck, k);
+                }
+            return result;
+        }
+
+        static float Noise(int x, int y, float s)
+        {
+            float gx = x / s, gy = y / s;
+            int x0 = (int)gx, y0 = (int)gy;
+            float fx = gx - x0, fy = gy - y0;
+            fx = fx * fx * (3 - 2 * fx);
+            fy = fy * fy * (3 - 2 * fy);
+            float h(int i, int j) => (Hash(i, j) % 1000) / 1000f;
+            float top = Mathf.Lerp(h(x0, y0), h(x0 + 1, y0), fx), bottom = Mathf.Lerp(h(x0, y0 + 1), h(x0 + 1, y0 + 1), fx);
+            return Mathf.Lerp(top, bottom, fy);
         }
 
         // Specks and ripples painted on bare ground take the ground's own hue: texture, not water.
