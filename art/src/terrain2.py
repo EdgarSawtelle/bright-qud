@@ -268,13 +268,32 @@ def _cage_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x] = "w" if light == "1" else light
 
 
+def _petal_texture(g, y0, y1, rnd, light, mid, dark):
+    """Bey Lah's huts: "stripped trunks of sallow brinestalk bonded with mud and strewn with flower petals".
+    Upright pale trunks with mud between them, a few pressed petals (fixed pink/gold/violet) stuck on."""
+    for y in range(y0, y1):
+        for x in range(16):
+            col = x % 4
+            g[y][x] = dark if col == 3 else (light if col == 0 else mid)   # trunk, its lit edge, mud seam
+    for _ in range(2):                                         # a mud band across the trunks
+        y = rnd.randrange(y0, max(y0 + 1, y1))
+        for x in range(16):
+            if g[y][x] != dark:
+                g[y][x] = dark if x % 2 else mid
+    for _ in range(4):                                         # pressed petals
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(16)
+        g[y][x] = rnd.choice("MyM")
+        if x + 1 < 16 and rnd.random() < 0.5:
+            g[y][x + 1] = "m"
+
+
 MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_texture, "metal": _metal_texture,
              "slab": _slab_texture, "wood": _wood_texture, "brick": _brick_texture, "stone": _stone_texture,
              "plant": _plant_texture, "shroom": _shroom_texture, "crystal": _crystal_texture, "bone": _bone_texture,
              "tech": _tech_texture, "scale": _scale_texture,
-             "cage": _cage_texture}
+             "cage": _cage_texture, "petal": _petal_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
-EXTRA_WALL_MATERIALS = ["cage"]
+EXTRA_WALL_MATERIALS = ["cage", "petal"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

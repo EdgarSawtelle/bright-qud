@@ -1390,7 +1390,7 @@ namespace BrightQud
             {
                 int kind = ZoneKind(cell);
                 if (wallSwap != null && top != null && cell.X < wallSwap.GetLength(0) && cell.Y < wallSwap.GetLength(1)
-                    && wallSwap[cell.X, cell.Y] != null && top.Blueprint.StartsWith("MushroomWall", StringComparison.Ordinal))
+                    && wallSwap[cell.X, cell.Y] != null && SwapKind(top.Blueprint) != 0)
                     ch._Tile = wallSwap[cell.X, cell.Y];
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 if (kind == KindJoppa && bare)
@@ -1938,48 +1938,54 @@ namespace BrightQud
             return result;
         }
 
-        // Walls the game draws with a generic block tile but that deserve their own material: Kyakukya's
-        // "mushroom flesh" ("spore-rich slime glistens on the cage-like fruiting body") becomes the cage
-        // fungus wall, joined to its N/E/S/W neighbours. Computed once per zone refresh.
+        // Walls that deserve their own material: Kyakukya's "mushroom flesh" ("spore-rich slime glistens on
+        // the cage-like fruiting body") becomes the cage fungus wall; Bey Lah's petal-strewn brinestalk gets
+        // pale trunks with pressed petals. Joined to same-kind N/E/S/W neighbours; computed per zone refresh.
         static string[,] wallSwap;
-        static readonly string[] CageTiles = BuildCageTiles();
+        static readonly string[] CageTiles = BuildWallTiles("cage"), PetalTiles = BuildWallTiles("petal");
 
-        static string[] BuildCageTiles()
+        static string[] BuildWallTiles(string material)
         {
             var t = new string[16];
             for (int i = 0; i < 16; i++)
-                t[i] = "brightqudwall/cage-" + ((i >> 3) & 1) + ((i >> 2) & 1) + ((i >> 1) & 1) + (i & 1);
+                t[i] = "brightqudwall/" + material + "-" + ((i >> 3) & 1) + ((i >> 2) & 1) + ((i >> 1) & 1) + (i & 1);
             return t;
         }
+
+        // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk; 0 = no swap.
+        static int SwapKind(string blueprint) =>
+            blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
             wallSwap = null;
             int w = zone.Width, h = zone.Height;
-            bool[,] cage = null;
+            int[,] kind = null;
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
                 {
                     Cell c = zone.GetCell(x, y);
                     if (c == null) continue;
                     for (int i = 0; i < c.Objects.Count; i++)
-                        if (c.Objects[i].Blueprint.StartsWith("MushroomWall", StringComparison.Ordinal))
-                        {
-                            cage = cage ?? new bool[w, h];
-                            cage[x, y] = true;
-                            break;
-                        }
+                    {
+                        int k = SwapKind(c.Objects[i].Blueprint);
+                        if (k == 0) continue;
+                        kind = kind ?? new int[w, h];
+                        kind[x, y] = k;
+                        break;
+                    }
                 }
-            if (cage == null) return;
+            if (kind == null) return;
             wallSwap = new string[w, h];
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
-                    if (cage[x, y])
-                    {
-                        int n = y > 0 && cage[x, y - 1] ? 8 : 0, e = x < w - 1 && cage[x + 1, y] ? 4 : 0;
-                        int s = y < h - 1 && cage[x, y + 1] ? 2 : 0, wv = x > 0 && cage[x - 1, y] ? 1 : 0;
-                        wallSwap[x, y] = CageTiles[n | e | s | wv];
-                    }
+                {
+                    int k = kind[x, y];
+                    if (k == 0) continue;
+                    int n = y > 0 && kind[x, y - 1] == k ? 8 : 0, e = x < w - 1 && kind[x + 1, y] == k ? 4 : 0;
+                    int s = y < h - 1 && kind[x, y + 1] == k ? 2 : 0, wv = x > 0 && kind[x - 1, y] == k ? 1 : 0;
+                    wallSwap[x, y] = (k == 1 ? CageTiles : PetalTiles)[n | e | s | wv];
+                }
         }
 
         static float Noise(int x, int y, float s)
