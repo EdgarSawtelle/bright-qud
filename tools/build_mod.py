@@ -352,7 +352,7 @@ def main():
         write(img, flat_name(k))
         write(mask, "BrightQudMask/" + flat_name(k))
     # Aliased wall families: 16 N/E/S/W variants per material (runtime maps the game's 256 masks).
-    for mat in sorted(set(T2.ALIAS_FAMILIES.values())):
+    for mat in sorted(set(T2.ALIAS_FAMILIES.values()) | set(T2.EXTRA_WALL_MATERIALS)):
         for suffix, mask8 in T2.alias_variants():
             k = f"brightqudwall/{mat}-{suffix}"
             img, mask = B.render(T2.painted_wall(mat, mask8), "terrain", fg="w", detail="c", with_mask=True)

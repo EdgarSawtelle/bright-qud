@@ -35,7 +35,8 @@ Every helper below has its own switch in **Options → Mods**.
   At night and underground, torch posts and campfires cast warm pools of light, and glowing
   plants like the marsh's glowpads light the ground in their own colour. Red Rock gets
   redder rock above and a red-brown rubble floor in its caves; the Rust Wells get rust-flaked
-  ground, tar-dark floors below, and fulcrete looks like bitumen with pale gravel; the jungle floor is wet loam with soft sunflecks. Frogs, reptiles and Templars redrawn.
+  ground, tar-dark floors below, and fulcrete looks like bitumen with pale gravel; the jungle floor is wet loam with soft sunflecks;
+  Kyakukya's houses are glossy cage-lattice fungus. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |

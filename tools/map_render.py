@@ -93,7 +93,7 @@ def wall_mask(cells, x, y, group):
     return bits
 
 
-def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None):
+def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None, swap=None):
     """mode: vanilla | now | new. box = (x0, y0, x1, y1) in cells. ground(x, y) -> RGB for mode new.
     bare(x, y) -> RGBA tile drawn on cells with no object (mode new), like the runtime's zone floors.
     tone(name, fg, detail, tile) -> (fg_rgb, detail_rgb) or None: proposal recolours (mode new)."""
@@ -129,6 +129,8 @@ def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None):
                     tile = tile.replace("-00000000", "-" + wall_mask(cells, x, y, group))
                 fg, dt = color_letters(bp(), name)
                 key = zm.key_of(tile) if tile else None
+                if swap and mode == "new":
+                    key = swap(name, x, y, cells) or key       # runtime tile swaps (e.g. Kyakukya cage walls)
                 t = None
                 if key:
                     if mode == "vanilla":

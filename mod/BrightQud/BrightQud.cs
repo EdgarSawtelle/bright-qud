@@ -1389,6 +1389,9 @@ namespace BrightQud
             if (Settings.Ground && cell.ParentZone != null && !cell.ParentZone.IsWorldMap())
             {
                 int kind = ZoneKind(cell);
+                if (wallSwap != null && top != null && cell.X < wallSwap.GetLength(0) && cell.Y < wallSwap.GetLength(1)
+                    && wallSwap[cell.X, cell.Y] != null && top.Blueprint.StartsWith("MushroomWall", StringComparison.Ordinal))
+                    ch._Tile = wallSwap[cell.X, cell.Y];
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 if (kind == KindJoppa && bare)
                 {
@@ -1677,6 +1680,7 @@ namespace BrightQud
                 : zoneKind == KindFamily ? (zoneFamily == FamilyJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], SunFleck)
                     : Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily])) : ComputeOutdoor(zone);
             ComputeLight(zone);
+            ComputeWallSwaps(zone);
             danger = zone.IsWorldMap() ? ComputeDanger(zone) : null;
             Color sum = Color.clear;
             foreach (Color c in outdoor) sum += c;
@@ -1736,7 +1740,7 @@ namespace BrightQud
                     return FamilyRustWell;  // rust dust with flakes shed by the qudzu
                 case "TerrainBethesdaSusa": case "TerrainRustedArchway":
                     return 2;
-                case "TerrainJungle":
+                case "TerrainJungle": case "TerrainKyakukya":
                     return FamilyJungle;
                 case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
@@ -1929,6 +1933,50 @@ namespace BrightQud
                     result[x, y] = Color.Lerp(result[x, y], fleck, k);
                 }
             return result;
+        }
+
+        // Walls the game draws with a generic block tile but that deserve their own material: Kyakukya's
+        // "mushroom flesh" ("spore-rich slime glistens on the cage-like fruiting body") becomes the cage
+        // fungus wall, joined to its N/E/S/W neighbours. Computed once per zone refresh.
+        static string[,] wallSwap;
+        static readonly string[] CageTiles = BuildCageTiles();
+
+        static string[] BuildCageTiles()
+        {
+            var t = new string[16];
+            for (int i = 0; i < 16; i++)
+                t[i] = "brightqudwall/cage-" + ((i >> 3) & 1) + ((i >> 2) & 1) + ((i >> 1) & 1) + (i & 1);
+            return t;
+        }
+
+        static void ComputeWallSwaps(Zone zone)
+        {
+            wallSwap = null;
+            int w = zone.Width, h = zone.Height;
+            bool[,] cage = null;
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                {
+                    Cell c = zone.GetCell(x, y);
+                    if (c == null) continue;
+                    for (int i = 0; i < c.Objects.Count; i++)
+                        if (c.Objects[i].Blueprint.StartsWith("MushroomWall", StringComparison.Ordinal))
+                        {
+                            cage = cage ?? new bool[w, h];
+                            cage[x, y] = true;
+                            break;
+                        }
+                }
+            if (cage == null) return;
+            wallSwap = new string[w, h];
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    if (cage[x, y])
+                    {
+                        int n = y > 0 && cage[x, y - 1] ? 8 : 0, e = x < w - 1 && cage[x + 1, y] ? 4 : 0;
+                        int s = y < h - 1 && cage[x, y + 1] ? 2 : 0, wv = x > 0 && cage[x - 1, y] ? 1 : 0;
+                        wallSwap[x, y] = CageTiles[n | e | s | wv];
+                    }
         }
 
         static float Noise(int x, int y, float s)

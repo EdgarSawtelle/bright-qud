@@ -247,10 +247,34 @@ def _ornate(motif):
     return texture
 
 
+def _cage_texture(g, y0, y1, rnd, light, mid, dark):
+    """Kyakukya's mushroom flesh: "spore-rich slime glistens on the cage-like fruiting body, trimmed like a
+    hedge". A lattice of glossy fungus with round dark holes (red cage fungus), a few wet glints."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = mid
+    for row, cy in enumerate(range(y0 + 2, y1, 5)):
+        for cx in range(1 + (row % 2) * 3, 16, 6):
+            for y in range(cy - 1, cy + 2):
+                for x in range(cx - 1, cx + 3):
+                    if 0 <= x < 16 and y0 <= y < y1 and not (y != cy and x in (cx - 1, cx + 2)):
+                        g[y][x] = dark                         # a hole in the lattice
+            if 0 <= cx - 1 < 16 and y0 <= cy - 2 < y1:
+                g[cy - 2][cx] = light                          # the rim above each hole catches light
+                g[cy - 2][cx + 1] = light
+    for _ in range(3):                                         # glistening slime
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(16)
+        if g[y][x] != dark:
+            g[y][x] = "w" if light == "1" else light
+
+
 MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_texture, "metal": _metal_texture,
              "slab": _slab_texture, "wood": _wood_texture, "brick": _brick_texture, "stone": _stone_texture,
              "plant": _plant_texture, "shroom": _shroom_texture, "crystal": _crystal_texture, "bone": _bone_texture,
-             "tech": _tech_texture, "scale": _scale_texture}
+             "tech": _tech_texture, "scale": _scale_texture,
+             "cage": _cage_texture}
+# Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
+EXTRA_WALL_MATERIALS = ["cage"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants
