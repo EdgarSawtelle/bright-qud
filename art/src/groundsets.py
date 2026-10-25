@@ -28,6 +28,7 @@ FAMILIES = {
     "rustwell": ("874a33", "8d4f37", "c8743c"),  # Rust Wells surface: rust dust with flaking iron
     "rustcave": ("2f2723", "352c27", "b0602e"),  # Rust Wells strata: bitumen-dark floor, rust flakes
     "jungle": ("3a3022", "3f3427", "3c6a2c"),    # Jungle: dark wet loam, leaf litter, roots, moss
+    "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
 }
 
 # Jungle sunflecks: the ground brightens a little toward this colour in large soft patches (runtime
@@ -189,6 +190,24 @@ def bitumen(t, base, acc):
         t.line(base, t.rnd.randrange(0, 10), t.rnd.randrange(3, 21), t.rnd.randrange(4, 7), 0.78)
 
 
+def meadow(t, base, acc):
+    """Flower fields: "prismatic filament colonizes the cracks between the salted rot" - salt cracks with
+    faint coloured threads in them, short grass. Every colour stays close to the ground."""
+    t.grain(base, 30, 0.93, 1.07)
+    for _ in range(t.rnd.randrange(2, 4)):                 # salt cracks with a filament running along them
+        x, y, n = t.rnd.randrange(-1, 10), t.rnd.randrange(3, 21), t.rnd.randrange(4, 7)
+        hue = t.rnd.choice(((224, 69, 95), (177, 84, 207), (61, 160, 255), (232, 208, 72)))
+        for i in range(n):
+            t.put(x + i, y, shade(base, 1.08))
+            if i % 2:
+                t.put(x + i, y + 1, tuple(round(base[k] + (hue[k] - base[k]) * 0.3) for k in range(3)) + (255,))
+            y += t.rnd.choice((0, 0, 1, -1))
+    for _ in range(t.rnd.randrange(3, 6)):                 # short grass
+        x, y = t.rnd.randrange(1, 15), t.rnd.randrange(3, 23)
+        t.put(x, y, shade(acc, 1.05, 0.6))
+        t.put(x, y - 1, shade(acc, 1.15, 0.55))
+
+
 def marsh(t, base, acc):
     t.grain(base, 30)
     for _ in range(t.rnd.randrange(2, 4)):                 # tufted marsh grass: olive-golden blades
@@ -206,7 +225,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow}
 
 
 def tiles(family):

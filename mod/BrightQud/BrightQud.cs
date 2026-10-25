@@ -1704,11 +1704,11 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle" };
+            "rustwell", "rustcave", "jungle", "meadow" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427") };
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e") };
         const int FamilyJungle = 10;
         // Jungle: "deep shade with a few bright leaf-lit patches" - soft sunflecks over several cells.
         static readonly Color SunFleck = Hex("5c5230");
@@ -1742,6 +1742,8 @@ namespace BrightQud
                     return 2;
                 case "TerrainJungle": case "TerrainKyakukya":
                     return FamilyJungle;
+                case "TerrainFlowerfields":
+                    return 11;   // meadow: salted pale green-grey with prismatic filaments
                 case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
                 case "TerrainGritGate":
