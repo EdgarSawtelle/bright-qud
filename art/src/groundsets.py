@@ -136,7 +136,7 @@ def green(t, base, acc):
 
 
 def teal(t, base, acc):
-    t.grain(base, 36, 0.85, 1.15)
+    t.grain(base, 28, 0.9, 1.1)
     for _ in range(t.rnd.randrange(2, 4)):                 # small grit clusters
         x, y = t.rnd.randrange(1, 14), t.rnd.randrange(2, 22)
         t.put(x, y, shade(base, 1.25))

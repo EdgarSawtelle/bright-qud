@@ -1769,9 +1769,10 @@ namespace BrightQud
                 if (zone.Z > 10)
                 {
                     // Underground: Red Rock's four strata get their red-brown rubble floor.
-                    if (bp == "TerrainRedRock" || bp == "TerrainRustWell")
+                    if (bp == "TerrainRedRock" || bp == "TerrainRustWell" || bp == "TerrainGritGate")
                     {
-                        zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : FamilyRustCave;
+                        // Red Rock: red-brown rubble; Rust Wells: bitumen; Grit Gate: carbon-black teal
+                        zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : bp == "TerrainRustWell" ? FamilyRustCave : 4;
                         return KindFamily;
                     }
                     return KindPlain;
