@@ -500,6 +500,64 @@ def puddle(seed=1):
     return _rows(g)
 
 
+def trickle(mask):
+    """A few drams of liquid: a thin trickle, not a cell full of water. mask = N*8 + E*4 + S*2 + W*1, the wet
+    neighbours it runs to (the game's shallow-liquid paint mask). Each arm meets the cell edge at a fixed
+    point (N/S x 7-8, E/W y 12-13) so trickles in neighbouring cells join up; 0 = a small lone puddle.
+    Foreground ramp (the liquid's colour), flat, mostly transparent so the ground shows."""
+    rnd = random.Random(mask * 7 + 3)
+    g = _grid(".")
+
+    def dab(x, y, c="2"):
+        if 0 <= x < 16 and 0 <= y < 24 and g[y][x] != "1":
+            g[y][x] = c
+
+    cx, cy = 7, 12
+    arms = [(d, b) for d, b in (("N", 8), ("E", 4), ("S", 2), ("W", 1)) if mask & b]
+    for d, _ in arms:
+        # 3 px wide where it meets the edge, 2-4 px in between: a lit edge, the liquid, a darker edge
+        if d in ("N", "S"):
+            ys = range(0, cy + 1) if d == "N" else range(cy, 24)
+            for y in ys:
+                mid = 2 < y < 21
+                wob = round(math.sin((y + mask) / 3.1) * 1.0) if mid else 0
+                wide = 1 if mid and rnd.random() < 0.35 else 0
+                dab(cx - 1 + wob, y, "1" if y % 4 == 1 else "2")
+                dab(cx + wob, y)
+                dab(cx + 1 + wob, y, "3")
+                if wide:
+                    dab(cx + 2 + wob, y, "3")
+        else:
+            xs = range(0, cx + 2) if d == "W" else range(cx, 16)
+            for x in xs:
+                mid = 1 < x < 14
+                wob = round(math.sin((x + mask) / 2.7) * 1.0) if mid else 0
+                dab(x, cy - 1 + wob, "1" if x % 5 == 2 else "2")
+                dab(x, cy + wob)
+                dab(x, cy + 1 + wob, "3")
+                if mid and rnd.random() < 0.35:
+                    dab(x, cy + 2 + wob, "3")
+    # little pool where the arms meet (a lone puddle when there are none)
+    # (none on a straight run: a pool in every cell read as a bead chain)
+    rx, ry = (0, 0) if mask in (10, 5) else (3.2, 2.4) if arms else (3.8, 2.6)
+    for y in range(24 if rx else 0):
+        for x in range(16):
+            d = ((x - cx - 0.5) / rx) ** 2 + ((y - cy - 0.5) / ry) ** 2
+            if d <= 1:
+                dab(x, y, "3" if d > 0.6 and y > cy else "1" if d > 0.6 and y < cy else "2")
+    if rx:
+        g[cy - 1][cx] = "1"
+    # flecks in the liquid's detail colour (the lava-lit specks of primordial soup)
+    for y in range(24):
+        for x in range(16):
+            if g[y][x] == "2" and rnd.random() < 0.18:
+                g[y][x] = "5"
+    if not arms:                                  # a couple of drops beside the lone puddle
+        for _ in range(2):
+            dab(rnd.choice((2, 3, 12, 13)), rnd.randrange(8, 17))
+    return _rows(g)
+
+
 def dune(seed=1):
     """Salt-dune ground: sparse specks and a short wind ripple."""
     rnd = random.Random(seed)

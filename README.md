@@ -37,7 +37,8 @@ Every helper below has its own switch in **Options → Mods**.
   redder rock above and a red-brown rubble floor in its caves; the Rust Wells get rust-flaked
   ground, tar-dark floors below, and fulcrete looks like bitumen with pale gravel; the jungle floor is wet loam with soft sunflecks;
   Kyakukya's houses are glossy cage-lattice fungus and Bey Lah's huts are petal-strewn brinestalk;
-  hills and mountains get soft chalk marl and glaucous limestone walls. Frogs, reptiles and Templars redrawn.
+  hills and mountains get soft chalk marl and glaucous limestone walls; the salt desert is wind-rippled ivory with
+  faint salt cracks, and a few drams of liquid show as a thin trickle, not a cell of water. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |

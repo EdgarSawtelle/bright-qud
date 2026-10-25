@@ -66,8 +66,8 @@ namespace BrightQud
             public bool Memory;
             public bool ClearMemory;
             public string UnderKey; // optional terrain drawn underneath (e.g. water under a swimmer)
-            public Color Under;
-            public int Style;       // auto-style for vanilla tiles (Style* constants)
+            public Color Under, UnderDetail;
+            public int Style;      // auto-style for vanilla tiles (Style* constants)
             public int Mutations;   // bit i = MutationOrder[i] is present (humanoid-kit tiles only)
             public int Frame;       // idle animation frame (0/1) for creatures
             public int Hud;         // map HUD: bits 0-1 ring (1 hostile, 2 ally), bits 2-4 health bucket,
@@ -96,8 +96,8 @@ namespace BrightQud
         static readonly HashSet<string> NotOurs = new HashSet<string>();
         static readonly Dictionary<string, Request> Requests = new Dictionary<string, Request>();
         // (tile, fg, detail, remembered) -> virtual path or null. Avoids allocating strings for every cell redraw.
-        static readonly Dictionary<(string, uint, uint, bool, bool, string, uint, int, int, int, int), string> Resolved =
-            new Dictionary<(string, uint, uint, bool, bool, string, uint, int, int, int, int), string>();
+        static readonly Dictionary<(string, uint, uint, bool, bool, string, uint, uint, int, int, int, int), string> Resolved =
+            new Dictionary<(string, uint, uint, bool, bool, string, uint, uint, int, int, int, int), string>();
         static readonly Dictionary<string, exTextureInfo> Built = new Dictionary<string, exTextureInfo>();
         static int destroyedCount;
 
@@ -175,17 +175,20 @@ namespace BrightQud
         // under/underColor: terrain tile to draw beneath this one (null for none).
         // style: auto-style tier for vanilla tiles (StyleNone keeps them vanilla).
         public static string Resolve(string tile, Color fg, Color detail, bool memory, string under = null,
-            Color underColor = default, int style = StyleNone, int mutations = 0, int frame = 0, int hud = 0)
+            Color underColor = default, int style = StyleNone, int mutations = 0, int frame = 0, int hud = 0,
+            Color underDetail = default)
         {
             if (tile == null || tile.StartsWith(Prefix, StringComparison.Ordinal) || !Active) return null;
+            if (underDetail.a <= 0f) underDetail = underColor;
             bool clearMemory = memory && Settings.ClearMemory;
-            var cacheKey = (tile, Pack(fg), Pack(detail), memory, clearMemory, under, Pack(underColor), style, mutations,
-                frame, hud);
+            var cacheKey = (tile, Pack(fg), Pack(detail), memory, clearMemory, under, Pack(underColor), Pack(underDetail),
+                style, mutations, frame, hud);
             lock (Lock)
             {
                 if (Resolved.TryGetValue(cacheKey, out string cached)) return cached;
             }
-            string virt = Compute(tile, fg, detail, memory, clearMemory, under, underColor, style, mutations, frame, hud);
+            string virt = Compute(tile, fg, detail, memory, clearMemory, under, underColor, underDetail, style, mutations,
+                frame, hud);
             lock (Lock)
             {
                 if (Resolved.Count > 20000) Resolved.Clear();
@@ -214,12 +217,14 @@ namespace BrightQud
         }
 
         static string Compute(string tile, Color fg, Color detail, bool memory, bool clearMemory, string under,
-            Color underColor, int style,
+            Color underColor, Color underDetail, int style,
             int mutations, int frame, int hud)
         {
             string key = Key(tile);
+            // Our terrain, or a vanilla liquid (primordial soup pools are vanilla Gunk tiles).
             string underKey = under != null ? Key(under) : null;
-            if (underKey != null && !IsOurs(underKey)) underKey = null;
+            if (underKey != null && !IsOurs(underKey) && !underKey.StartsWith("liquids/", StringComparison.Ordinal))
+                underKey = null;
             bool ours = IsOurs(key);
             if (style == StyleProjectile && !ours) return null; // vanilla projectiles are fine as they are
             if (ours && style != StyleProjectile) style = StyleNone; // hand-drawn tiles carry their own style
@@ -227,7 +232,7 @@ namespace BrightQud
             // Vanilla tiles are taken over to auto-style them or to compose them onto our terrain.
             if (!ours && underKey == null && style == StyleNone) return null;
             string virt = Prefix + key + "|" + Hex(fg) + "|" + Hex(detail) + (memory ? clearMemory ? "|mc" : "|m" : "")
-                + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) : "")
+                + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) : "")
                 + (style != StyleNone ? "|s" + style : "")
                 + (mutations != 0 ? "|mu" + mutations : "")
                 + (frame != 0 ? "|f" + frame : "")
@@ -236,7 +241,7 @@ namespace BrightQud
             {
                 Requests[virt] = new Request
                 {
-                    Key = key, Fg = fg, Detail = detail, Memory = memory, ClearMemory = clearMemory, UnderKey = underKey, Under = underColor,
+                    Key = key, Fg = fg, Detail = detail, Memory = memory, ClearMemory = clearMemory, UnderKey = underKey, Under = underColor, UnderDetail = underDetail,
                     Style = style, Mutations = mutations, Frame = frame, Hud = hud
                 };
             }
@@ -599,7 +604,9 @@ namespace BrightQud
             if (req.Hud != 0 && px.Length == 16 * 24) DrawHud(px, req.Hud);
             if (req.UnderKey != null)
             {
-                Color[] under = Recolored(req.UnderKey, req.Under, req.Under);
+                // Same look as the liquid's own cells: ours recolored, vanilla with the flat-tier math.
+                Color[] under = IsOurs(req.UnderKey) ? Recolored(req.UnderKey, req.Under, req.UnderDetail)
+                    : Vanilla(req.UnderKey, Brighten(req.Under), Brighten(req.UnderDetail));
                 if (req.UnderKey.StartsWith("liquids/", StringComparison.Ordinal)) ToneLiquid(under);
                 if (under.Length == px.Length)
                     for (int i = 0; i < px.Length; i++) px[i] = Over(px[i], under[i]);
@@ -689,11 +696,11 @@ namespace BrightQud
             {
                 // Cell.Render: a cell is drawn as remembered when not visible or lit at level <= 1.
                 bool memory = !Event.Visible || (int)Event.Lit <= 1;
-                Ground.Apply(__instance, Event, memory, out string under, out Color underColor, out int style,
-                    out int mutations, out int frame, out bool isPlayer, out int hud);
+                Ground.Apply(__instance, Event, memory, out string under, out Color underColor, out Color underDetail,
+                    out int style, out int mutations, out int frame, out bool isPlayer, out int hud);
                 string tile = isPlayer ? Settings.PlayerTile(__instance._Tile) : __instance._Tile;
                 string virt = Recolor.Resolve(tile, __instance.Foreground, __instance.Detail, memory, under,
-                    underColor, style, mutations, frame, hud);
+                    underColor, style, mutations, frame, hud, underDetail);
                 if (virt != null) __instance._Tile = virt;
             }
             catch (Exception e)
@@ -962,24 +969,59 @@ namespace BrightQud
         }
     }
 
-    // Tile particles (thrown items without VFX, ability blips...) paint a black background behind their
-    // tile and skip the recolor. Afterwards: ground color behind them and the Bright Qud tile.
+    // Tile particles (thrown items without VFX, ability blips...) paint the game's teal 'k' background behind
+    // their tile and skip the recolor. Afterwards: ground color behind them and the Bright Qud tile.
+    // Text particles (blood splashes, level-up notes, the HP heart...) write a glyph on 'k' teal over whatever
+    // the cell showed, so creatures vanished for a frame: their cells are put back, other cells keep the
+    // glyph on the ground colour.
     [HarmonyPatch(typeof(XRL.UI.ParticleManager), nameof(XRL.UI.ParticleManager.Render),
         new Type[] { typeof(ScreenBuffer) })]
     public static class ParticlePatch
     {
-        [ThreadStatic] static List<(int x, int y, string tile)> drawn;
+        struct Saved
+        {
+            public int X, Y;
+            public bool Creature;
+            public string Tile;
+            public char Char;
+            public Color Fg, Bg, Detail;
+            public bool HFlip, VFlip;
+        }
 
-        static void Prefix(XRL.UI.ParticleManager __instance)
+        [ThreadStatic] static List<(int x, int y, string tile)> drawn;
+        [ThreadStatic] static List<Saved> texts;
+
+        static void Prefix(XRL.UI.ParticleManager __instance, ScreenBuffer Buffer)
         {
             if (drawn == null) drawn = new List<(int, int, string)>();
+            if (texts == null) texts = new List<Saved>();
             drawn.Clear();
+            texts.Clear();
             try
             {
-                if (!Settings.EffectGround) return;
+                if (!Settings.EffectGround || !XRL.UI.Options.UseTextParticleVFX) return;
                 foreach (var t in __instance.TileParticles)
                     if (t != null && !t.Tile.IsNullOrEmpty())
                         drawn.Add((Convert.ToInt32(t.x), Convert.ToInt32(t.y), t.Tile));
+                Zone zone = The.ActiveZone;
+                if (zone == null || zone.IsWorldMap()) return;
+                for (int i = 0; i < __instance.Particles.Count && __instance.Particles[i].DelayMS <= 0; i++)
+                {
+                    var p = __instance.Particles[i];
+                    SaveText(Buffer, zone, Convert.ToInt32(p.x), Convert.ToInt32(p.y), p.Text);
+                }
+                for (int i = 0; i < __instance.RadialParticles.Count && __instance.RadialParticles[i].DelayMS <= 0; i++)
+                {
+                    var p = __instance.RadialParticles[i];
+                    SaveText(Buffer, zone, Convert.ToInt32(p.x) + (int)(p.d * Math.Cos(p.r)),
+                        Convert.ToInt32(p.y) + (int)(p.d * Math.Sin(p.r)), p.Text);
+                }
+                for (int i = 0; i < __instance.SinusoidalParticles.Count && __instance.SinusoidalParticles[i].DelayMS <= 0; i++)
+                {
+                    var p = __instance.SinusoidalParticles[i];
+                    double s = Math.Sin(p.sinstart) * p.amp;
+                    SaveText(Buffer, zone, Convert.ToInt32(p.x) + (int)(s * p.xamp), Convert.ToInt32(p.y) + (int)(s * p.yamp), p.Text);
+                }
             }
             catch (Exception e)
             {
@@ -987,28 +1029,126 @@ namespace BrightQud
             }
         }
 
+        // Every cell the particle's text will cover (colour codes take no room).
+        static void SaveText(ScreenBuffer buffer, Zone zone, int x, int y, string text)
+        {
+            if (text.IsNullOrEmpty() || text[0] == '@' || text == "firefly" || y < 0 || y > 24) return;
+            int n = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (c == '&' || c == '^') { i++; continue; }
+                if (c == '{' || c == '}' || c == '|') continue;
+                int cx = x + n++;
+                if (cx < 0 || cx > 79) continue;
+                ConsoleChar ch = buffer.Buffer[cx, y];
+                if (ch == null) continue;
+                bool creature = ch._Tile != null && zone.GetCell(cx, y)?.GetFirstObjectWithPart("Brain") != null;
+                texts.Add(new Saved
+                {
+                    X = cx, Y = y, Creature = creature, Tile = ch._Tile, Char = ch._Char, Fg = ch.Foreground,
+                    Bg = ch.Background, Detail = ch.Detail, HFlip = ch.HFlip, VFlip = ch.VFlip,
+                });
+            }
+        }
+
         static void Postfix(ScreenBuffer Buffer)
         {
-            if (drawn == null || drawn.Count == 0) return;
             try
             {
-                foreach (var (x, y, tile) in drawn)
-                {
-                    if (x < 0 || y < 0 || x > 79 || y > 24) continue;
-                    ConsoleChar ch = Buffer.Buffer[x, y];
-                    if (ch == null || ch._Tile != tile) continue;
-                    Color b = ch.Background;
-                    if (b.r < 0.06f && b.g < 0.06f && b.b < 0.06f) ch.Background = Ground.GroundAt(x, y);
-                    string virt = Recolor.Resolve(tile, ch.Foreground, ch.Detail, false, null, default,
-                        Settings.AutoStyle ? Recolor.StyleObject : Recolor.StyleNone);
-                    if (virt != null) ch._Tile = virt;
-                }
+                if (texts != null)
+                    foreach (var s in texts)
+                    {
+                        ConsoleChar ch = Buffer.Buffer[s.X, s.Y];
+                        if (ch == null) continue;
+                        if (s.Creature)
+                        {
+                            ch._Char = s.Char;
+                            ch._Tile = s.Tile;
+                            ch.Foreground = s.Fg;
+                            ch.Background = s.Bg;
+                            ch.Detail = s.Detail;
+                            ch.HFlip = s.HFlip;
+                            ch.VFlip = s.VFlip;
+                        }
+                        else if (ch._Char != '\0' && Ground.IsDefault(ch.Background))
+                            ch.Background = Ground.IsDefault(s.Bg) ? Ground.GroundAt(s.X, s.Y) : s.Bg;
+                    }
+                if (drawn != null)
+                    foreach (var (x, y, tile) in drawn)
+                    {
+                        if (x < 0 || y < 0 || x > 79 || y > 24) continue;
+                        ConsoleChar ch = Buffer.Buffer[x, y];
+                        if (ch == null || ch._Tile != tile) continue;
+                        if (Ground.IsDefault(ch.Background)) ch.Background = Ground.GroundAt(x, y);
+                        string virt = Recolor.Resolve(tile, ch.Foreground, ch.Detail, false, null, default,
+                            Settings.AutoStyle ? Recolor.StyleObject : Recolor.StyleNone);
+                        if (virt != null) ch._Tile = virt;
+                    }
             }
             catch (Exception e)
             {
                 MetricsManager.LogException("BrightQud.Particles", e);
             }
-            drawn.Clear();
+            drawn?.Clear();
+            texts?.Clear();
+        }
+    }
+
+    // Melee "punch": the game slides the attacker's own cell sprite toward the target, and the empty cell
+    // left behind showed the camera's teal for a moment. A ground sprite fills it while the punch runs.
+    [HarmonyPatch(typeof(CombatJuiceEntryPunch), nameof(CombatJuiceEntryPunch.update), new Type[0])]
+    public static class PunchUpdatePatch
+    {
+        public static readonly Dictionary<CombatJuiceEntryPunch, ex3DSprite2> Backings =
+            new Dictionary<CombatJuiceEntryPunch, ex3DSprite2>();
+
+        static void Postfix(CombatJuiceEntryPunch __instance)
+        {
+            try
+            {
+                if (__instance?.target == null || Backings.ContainsKey(__instance) || !Settings.EffectGround) return;
+                TileBehavior cell = __instance.target.GetComponent<TileBehavior>();
+                if (cell == null) return;
+                Color g = Ground.BareLook(cell.x, cell.y, out string tile);
+                ex3DSprite2 s = SpriteManager.GetPooledSprite("assets_content_textures_text_32.bmp", g, g, g);
+                if (tile != null)
+                {
+                    string virt = Recolor.Resolve(tile, Color.white, Color.white, false);
+                    if (virt != null && Recolor.TryGet(virt, out exTextureInfo info) && info != null)
+                    {
+                        s.textureInfo = info;
+                        s.shader = SpriteManager.GetShaderMode(info.ShaderMode);
+                    }
+                }
+                s.color = s.detailcolor = s.backcolor = g;
+                s.transform.SetParent(GameManager.Instance.TileRoot.transform);
+                s.transform.localScale = Vector3.one;
+                s.transform.position = GameManager.Instance.getTileCenter(cell.x, cell.y) + new Vector3(0f, 0f, 0.5f);
+                Backings[__instance] = s;
+            }
+            catch (Exception e)
+            {
+                MetricsManager.LogException("BrightQud.Punch", e);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CombatJuiceEntryPunch), nameof(CombatJuiceEntryPunch.finish), new Type[0])]
+    public static class PunchFinishPatch
+    {
+        static void Prefix(CombatJuiceEntryPunch __instance)
+        {
+            try
+            {
+                if (__instance == null || !PunchUpdatePatch.Backings.TryGetValue(__instance, out ex3DSprite2 s)) return;
+                PunchUpdatePatch.Backings.Remove(__instance);
+                if (s != null) SpriteManager.Return(s);
+            }
+            catch (Exception e)
+            {
+                MetricsManager.LogException("BrightQud.Punch", e);
+            }
         }
     }
 
@@ -1326,12 +1466,13 @@ namespace BrightQud
         // Also reports terrain to draw under the cell's top tile: the game shows only one object per
         // cell, so a swimmer would otherwise sit on a flat colored square instead of the water.
         public static void Apply(ConsoleChar ch, RenderEvent e, bool memory, out string under, out Color underColor,
-            out int style, out int mutations, out int frame, out bool isPlayer, out int hud)
+            out Color underDetail, out int style, out int mutations, out int frame, out bool isPlayer, out int hud)
         {
             isPlayer = false;
             hud = 0;
             under = null;
             underColor = default;
+            underDetail = default;
             style = Recolor.StyleNone;
             mutations = 0;
             frame = 0;
@@ -1398,6 +1539,9 @@ namespace BrightQud
                     else if (sk == 4) { ch.Foreground = LimestoneGlaucous; ch.Detail = LimestoneShade; }
                 }
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
+                // Salt dunes are floor objects with a tile of their own: drawn lighter than the ground around
+                // them they read as pale squares, so they get the zone's ground tiles like any bare cell.
+                if (kind == KindFamily && top != null && top.Blueprint.Contains("SaltDune")) bare = true;
                 if (kind == KindJoppa && bare)
                 {
                     // Joppa's salt-spangled earth: the warm-earth family tiles on every bare cell.
@@ -1475,18 +1619,27 @@ namespace BrightQud
             if (!Settings.AutoStyle) style = Recolor.StyleNone;
             XRL.World.GameObject liquid = cell.GetFirstObjectWithPart("LiquidVolume");
             string liquidTile = liquid?.Render?.Tile;
+            bool trickle = false;
+            if (liquidTile != null && e.Tile != null && e.Tile == liquidTile && cell.ParentZone != null
+                && !cell.ParentZone.IsWorldMap())
+                ch._Tile = LiquidTile(liquid, liquidTile, out trickle);
             if (liquidTile != null && e.Tile != null && e.Tile != liquidTile)
             {
-                under = liquidTile;
-                // Same color as the neighbouring water cells: LiquidVolume keeps the (mixed) liquid color
-                // on its Render part. Fallback: the liquid tint the game put in the cell background.
-                string cs = liquid.Render.ColorString;
+                // The same tile and colours as the liquid's own cells (a mushroom standing in primordial
+                // soup stands in soup, not in plain water). LiquidVolume keeps the (mixed) liquid colours on
+                // its Render part. Fallback: the liquid tint the game put in the cell background.
+                under = LiquidTile(liquid, liquidTile, out bool _);
+                string cs = liquid.Render.TileColor.IsNullOrEmpty() ? liquid.Render.ColorString : liquid.Render.TileColor;
                 int amp = cs?.LastIndexOf('&') ?? -1;
                 if (amp >= 0 && amp + 1 < cs.Length && QudColor.ColorMap.TryGetValue(cs[amp + 1], out Color lc))
                     underColor = lc;
                 else
                     underColor = IsDefault(ch.Background) ? QudColor.ColorMap['B'] : ch.Background;
-                underColor = ZoneLiquid(ZoneKind(cell), underColor, false);
+                string dc = liquid.Render.DetailColor;
+                underDetail = !dc.IsNullOrEmpty() && QudColor.ColorMap.TryGetValue(dc[0], out Color ld) ? ld : underColor;
+                int lk = ZoneKind(cell);
+                underColor = ZoneLiquid(lk, underColor, false);
+                underDetail = ZoneLiquid(lk, underDetail, true);
                 // The game tints the whole cell with the liquid color; with the liquid drawn as a tile
                 // underneath, the rest of the cell should show the normal ground (puddles are small).
                 Color ground = ColorFor(cell);
@@ -1494,8 +1647,9 @@ namespace BrightQud
                 return;
             }
             if (!Settings.Ground) return;
-            // Keep backgrounds an object asks for explicitly (anything but the default black 'k').
-            if (!IsDefault(ch.Background)) return;
+            // Keep backgrounds an object asks for explicitly (anything but the default black 'k'); a trickle
+            // leaves most of the cell dry, so it shows the ground instead of the liquid's tint.
+            if (!IsDefault(ch.Background) && !trickle) return;
             Color g = ColorFor(cell);
             if (memory) g = Color.Lerp(g, MemoryGround, MemoryFade);
             else g = Lit(g, cell);
@@ -1608,7 +1762,7 @@ namespace BrightQud
             return hud;
         }
 
-        static bool IsDefault(Color c)
+        public static bool IsDefault(Color c)
         {
             Color k = QudColor.ColorMap['k'];
             return (Mathf.Abs(c.r - k.r) < 0.02f && Mathf.Abs(c.g - k.g) < 0.02f && Mathf.Abs(c.b - k.b) < 0.02f)
@@ -1683,7 +1837,9 @@ namespace BrightQud
             // Moon Stair surface: lavender ground everywhere (crystal clusters are not buildings);
             // underground family zones: caves are not buildings either.
             bool moon = zoneKind == KindMoon;
-            enclosed = moon || (underground && zoneKind == KindFamily) ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
+            // Salt desert ruins: the sand drifts inside, so their floor is the dune ground too.
+            bool dunes = zoneKind == KindFamily && zoneFamily == FamilyDunes;
+            enclosed = moon || dunes || (underground && zoneKind == KindFamily) ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
             outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
@@ -1716,11 +1872,15 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
+            Hex("a5997f") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965") };
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
+            Hex("a89c83") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+        // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
+        const int FamilyDunes = 14;
         const int FamilyDeepJungle = 12;
         static readonly Color PinPrick = Hex("4a4528");
         const int FamilyJungle = 10;
@@ -1801,7 +1961,11 @@ namespace BrightQud
                 if (bp == "TerrainJoppa" || bp == "TerrainJoppaRuins") return KindJoppa;
                 if (bp != null && bp.StartsWith("TerrainFungal", StringComparison.Ordinal)) return KindFungal;
                 if (bp != null && (bp.StartsWith("TerrainSaltdunes", StringComparison.Ordinal)
-                    || bp == "TerrainTremblezone")) return KindSalt;
+                    || bp == "TerrainTremblezone"))
+                {
+                    zoneFamily = FamilyDunes;
+                    return KindFamily;
+                }
                 if (bp != null && bp.StartsWith("TerrainPalladiumReef", StringComparison.Ordinal)) return KindReef;
                 int family = bp != null ? FamilyOf(bp) : -1;
                 if (family >= 0)
@@ -2092,6 +2256,48 @@ namespace BrightQud
             if (kind == KindFungal) // primordial soup "cast in the light of lava"
                 return detail ? Color.Lerp(c, LavaLight, 0.6f) : Color.Lerp(c, SoupTeal, 0.55f);
             return c;
+        }
+
+        // A shallow liquid under this many drams is drawn as a thin trickle (a few drams dragged around, blood
+        // from a fight) that joins its wet neighbours, not as a cell full of water. Above it, primordial soup
+        // keeps its soup look (the game draws shallow soup with the plain-water tiles).
+        const int TrickleMax = 100;
+        static readonly string[] TrickleTiles = BuildTiles("liquids/trickle/", 16);
+        static readonly Dictionary<string, string> SoupTiles = new Dictionary<string, string>();
+
+        static string LiquidTile(XRL.World.GameObject liquid, string tile, out bool trickle)
+        {
+            trickle = false;
+            var lv = liquid?.LiquidVolume;
+            if (tile == null || lv == null || lv.IsWadingDepth()) return tile;
+            int at = tile.LastIndexOf("shallow-", StringComparison.OrdinalIgnoreCase);
+            if (at < 0 || tile.Length < at + 16) return tile;
+            string m = tile.Substring(at + 8, 8); // N NE E SE S SW W NW
+            if (lv.Volume < TrickleMax)
+            {
+                trickle = true;
+                return TrickleTiles[(m[0] == '1' ? 8 : 0) | (m[2] == '1' ? 4 : 0) | (m[4] == '1' ? 2 : 0) | (m[6] == '1' ? 1 : 0)];
+            }
+            if (lv.GetPrimaryLiquidID() != "proteangunk") return tile;
+            lock (SoupTiles)
+            {
+                if (!SoupTiles.TryGetValue(m, out string soup))
+                    SoupTiles[m] = soup = "Liquids/Gunk/deep-" + m[0] + "0" + m[2] + "0" + m[4] + "0" + m[6] + "0.png";
+                return soup;
+            }
+        }
+
+        // What a bare cell shows: the zone's ground tile (null where the ground is a plain colour) and colour.
+        public static Color BareLook(int x, int y, out string tile)
+        {
+            tile = null;
+            Cell cell = The.ActiveZone?.GetCell(x, y);
+            if (cell == null) return Earth;
+            Color g = ColorFor(cell);
+            int kind = ZoneKind(cell);
+            if (kind == KindFamily) tile = FamilyTiles[zoneFamily][Hash(x, y) % 16];
+            else if (kind == KindJoppa) tile = FamilyTiles[1][Hash(x, y) % 16];
+            return g;
         }
 
         static Color Scale(Color c, float k) => new Color(Mathf.Min(1f, c.r * k), Mathf.Min(1f, c.g * k), Mathf.Min(1f, c.b * k), 1f);

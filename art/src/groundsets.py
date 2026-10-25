@@ -9,7 +9,7 @@ same amount of light and dark detail (its average stays the ground colour).
 Tiles are drawn with exact colours (no role mask: they are never recoloured). Background is transparent:
 the ground colour itself comes from the zone (BrightQud.cs).
 """
-import colorsys, random
+import colorsys, math, random
 
 from PIL import Image
 
@@ -31,6 +31,7 @@ FAMILIES = {
     "deepjungle": ("2c2519", "312a1d", "2f5a26"),  # Deep jungle: darker loam, braided roots, moss
     "hills": ("7d7460", "827965", "8a8a5a"),       # Hills and mountains: dry dirt, scree, wind-flattened grass
     "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
+    "dunes": ("a5997f", "a89c83", "8c9592"),     # Salt desert: ivory wind ripples, cool grey cracks
 }
 
 # Jungle sunflecks: the ground brightens a little toward this colour in large soft patches (runtime
@@ -234,6 +235,32 @@ def meadow(t, base, acc):
         t.put(x, y - 1, shade(acc, 1.15, 0.55))
 
 
+def dunes(t, base, acc):
+    """Salt desert: "the ivory sea's dunes are like waves frozen in place. There are cracks in the salt".
+    Short wind ripples that start and end inside the tile (stripes running edge to edge lined up into rows
+    and read as a brick wall), one cool grey crack, salt grains and a rare crystal glint."""
+    t.grain(base, 30, 0.93, 1.07)
+    rows = t.rnd.sample(range(3, 22, 4), t.rnd.randrange(3, 5))   # spread out, never stacked
+    for y0 in rows:
+        n = t.rnd.randrange(6, 11)
+        x0 = t.rnd.randrange(1, 15 - n)
+        tilt = t.rnd.choice((-1, 0, 0, 1))
+        for i in range(n):
+            y = y0 - round(math.sin(math.pi * i / (n - 1)) * 1.2) + (tilt * i) // 5
+            t.put(x0 + i, y, shade(base, 1.09))               # lit crest
+            if 0 < i < n - 1:
+                t.put(x0 + i, y + 1, shade(base, 0.9))        # lee shadow
+    if t.rnd.random() < 0.6:                                  # a salt crack, cool grey-blue, faint
+        x, y = t.rnd.randrange(2, 12), t.rnd.randrange(3, 21)
+        crack = tuple(round(base[k] + (acc[k] - base[k]) * 0.45) for k in range(3)) + (255,)
+        for _ in range(t.rnd.randrange(3, 6)):
+            t.put(x, y, crack)
+            x += t.rnd.choice((1, 1, 0))
+            y += t.rnd.choice((-1, 1, 0))
+    if t.rnd.random() < 0.35:                                 # crystal glint
+        t.put(t.rnd.randrange(1, 15), t.rnd.randrange(1, 23), shade(base, 1.16, 0.5))
+
+
 def marsh(t, base, acc):
     t.grain(base, 30)
     for _ in range(t.rnd.randrange(2, 4)):                 # tufted marsh grass: olive-golden blades
@@ -251,7 +278,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
 
 
 def tiles(family):

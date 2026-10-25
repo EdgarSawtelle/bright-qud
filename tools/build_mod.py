@@ -130,6 +130,8 @@ def targets(idx):
     add("tiles/tile-brinestalk", T2.brinestalk(), "tall", example="Brinestalk")
     for i in (1, 2, 3, 4):
         add(f"liquids/water/puddle/{i}", T2.puddle(i), "terrain", example="FreshWaterPuddle")
+    for m in range(16):   # small shallow liquids, picked at runtime (BrightQud.cs LiquidTile)
+        add(f"liquids/trickle/{m}", T2.trickle(m), "terrain", example="FreshWaterPuddle")
     for i in range(1, 13):
         add(f"terrain/sw/ground/desert/{i}", T2.dune(i), "terrain")
     add("terrain/sw/starappletree", T2.starapple_tree(), "tall", example="Starapple Tree")
