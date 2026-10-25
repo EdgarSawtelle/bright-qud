@@ -28,6 +28,7 @@ FAMILIES = {
     "rustwell": ("874a33", "8d4f37", "c8743c"),  # Rust Wells surface: rust dust with flaking iron
     "rustcave": ("2f2723", "352c27", "b0602e"),  # Rust Wells strata: bitumen-dark floor, rust flakes
     "jungle": ("3a3022", "3f3427", "3c6a2c"),    # Jungle: dark wet loam, leaf litter, roots, moss
+    "deepjungle": ("2c2519", "312a1d", "2f5a26"),  # Deep jungle: darker loam, braided roots, moss
     "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
 }
 
@@ -190,6 +191,16 @@ def bitumen(t, base, acc):
         t.line(base, t.rnd.randrange(0, 10), t.rnd.randrange(3, 21), t.rnd.randrange(4, 7), 0.78)
 
 
+def deepjungle(t, base, acc):
+    """Deep jungle: "maze-dense roots" - the jungle litter plus braided roots across the loam."""
+    green(t, base, acc)
+    for _ in range(t.rnd.randrange(1, 3)):                 # a braid of two roots crossing
+        x, y, n = t.rnd.randrange(-2, 8), t.rnd.randrange(3, 21), t.rnd.randrange(6, 10)
+        for i in range(n):
+            t.put(x + i, y + (i // 2) % 2, shade(base, 1.28, 0.9))
+            t.put(x + i, y + 1 - (i // 2) % 2, shade(base, 0.8))
+
+
 def meadow(t, base, acc):
     """Flower fields: "prismatic filament colonizes the cracks between the salted rot" - salt cracks with
     faint coloured threads in them, short grass. Every colour stays close to the ground."""
@@ -225,7 +236,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle}
 
 
 def tiles(family):

@@ -1438,6 +1438,12 @@ namespace BrightQud
                     ch.Foreground = ZoneLiquid(kind, ch.Foreground, false);
                     ch.Detail = ZoneLiquid(kind, ch.Detail, true);
                 }
+                else if (kind == KindFamily && (zoneFamily == FamilyJungle || zoneFamily == FamilyDeepJungle) && top != null && IsPlant(top))
+                {
+                    // Jungle plants: deeper, darker greens ("dense, dark, wet"); trunks and fruit keep theirs.
+                    ch.Foreground = Deepen(ch.Foreground);
+                    ch.Detail = Deepen(ch.Detail);
+                }
                 else if (top != null && (top.Blueprint.Contains("Fulcrete") || top.Blueprint == "TombSultan6Wall"))
                 {
                     ch.Foreground = FulcreteGravel;
@@ -1678,6 +1684,7 @@ namespace BrightQud
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
                 : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight)
                 : zoneKind == KindFamily ? (zoneFamily == FamilyJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], SunFleck)
+                    : zoneFamily == FamilyDeepJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], PinPrick, 3f, 0.72f, 0.6f)
                     : Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily])) : ComputeOutdoor(zone);
             ComputeLight(zone);
             ComputeWallSwaps(zone);
@@ -1704,11 +1711,13 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e") };
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d") };
+        const int FamilyDeepJungle = 12;
+        static readonly Color PinPrick = Hex("4a4528");
         const int FamilyJungle = 10;
         // Jungle: "deep shade with a few bright leaf-lit patches" - soft sunflecks over several cells.
         static readonly Color SunFleck = Hex("5c5230");
@@ -1744,7 +1753,9 @@ namespace BrightQud
                     return FamilyJungle;
                 case "TerrainFlowerfields":
                     return 11;   // meadow: salted pale green-grey with prismatic filaments
-                case "TerrainDeepJungle": case "TerrainGolgotha": case "TerrainOmonporch":
+                case "TerrainDeepJungle":
+                    return FamilyDeepJungle;  // "a high-wreath canopy chokes off the last beams of light"
+                case "TerrainGolgotha": case "TerrainOmonporch":
                     return 3;
                 case "TerrainGritGate":
                     return 4;
@@ -1850,6 +1861,7 @@ namespace BrightQud
         static Color[,] lightColor;
         static bool night;
         static readonly Color TorchWarm = Hex("ffaa5a");
+        static readonly Color GlowGold = Hex("e6c85a"), GlowBlue = Hex("6e96ff");
 
         static void ComputeLight(Zone zone)
         {
@@ -1886,6 +1898,30 @@ namespace BrightQud
                         any = true;
                     }
             }
+            // Plants the game only shows in the dark (deep jungle lagroot, yonderbrush) glow softly too.
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                {
+                    Cell c = zone.GetCell(x, y);
+                    if (c == null) continue;
+                    for (int i = 0; i < c.Objects.Count; i++)
+                    {
+                        string bpn = c.Objects[i].Blueprint;
+                        Color col = bpn == "Lagroot" ? GlowGold : bpn == "Yonderbrush" ? GlowBlue : default;
+                        if (col.a == 0f) continue;
+                        for (int dx = -2; dx <= 2; dx++)
+                            for (int dy = -2; dy <= 2; dy++)
+                            {
+                                int px = x + dx, py = y + dy;
+                                if (px < 0 || py < 0 || px >= zone.Width || py >= zone.Height) continue;
+                                float d = Mathf.Sqrt(dx * dx + dy * dy) / 2.5f;
+                                if (d >= 1f) continue;
+                                float f = Mathf.Pow(1f - d, 1.5f);
+                                if (f > l[px, py]) { l[px, py] = f; lc[px, py] = col; }
+                                any = true;
+                            }
+                    }
+                }
             light = any ? l : null;
             lightColor = any ? lc : null;
         }
@@ -1926,13 +1962,13 @@ namespace BrightQud
 
         // Flat ground brightened toward a light colour in large soft patches (smooth value noise over
         // ~5 cells, never per cell): sunflecks under a canopy.
-        static Color[,] Dappled(Zone zone, Color a, Color b, Color fleck)
+        static Color[,] Dappled(Zone zone, Color a, Color b, Color fleck, float scale = 5f, float threshold = 0.5f, float most = 0.7f)
         {
             Color[,] result = Flat(zone, a, b);
             for (int x = 0; x < zone.Width; x++)
                 for (int y = 0; y < zone.Height; y++)
                 {
-                    float k = Mathf.Max(0f, Noise(x, y, 5f) - 0.5f) / 0.5f * 0.7f;
+                    float k = Mathf.Max(0f, Noise(x, y, scale) - threshold) / (1f - threshold) * most;
                     result[x, y] = Color.Lerp(result[x, y], fleck, k);
                 }
             return result;
@@ -1986,6 +2022,28 @@ namespace BrightQud
                     int s = y < h - 1 && kind[x, y + 1] == k ? 2 : 0, wv = x > 0 && kind[x - 1, y] == k ? 1 : 0;
                     wallSwap[x, y] = (k == 1 ? CageTiles : PetalTiles)[n | e | s | wv];
                 }
+        }
+
+        static readonly Dictionary<string, bool> plantCache = new Dictionary<string, bool>();
+
+        // Trees and plants (not creatures): blueprint inheritance, cached per blueprint.
+        static bool IsPlant(XRL.World.GameObject o)
+        {
+            if (o.Brain != null) return false;
+            if (!plantCache.TryGetValue(o.Blueprint, out bool p))
+            {
+                var bp = o.GetBlueprint();
+                p = bp != null && (bp.InheritsFrom("Tree") || bp.InheritsFrom("Plant"));
+                plantCache[o.Blueprint] = p;
+            }
+            return p;
+        }
+
+        static Color Deepen(Color c)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            if (h <= 0.15f || h >= 0.45f) return c;
+            return Color.HSVToRGB(h + (0.36f - h) * 0.3f, s * 0.85f, v * 0.72f);
         }
 
         static float Noise(int x, int y, float s)

@@ -93,7 +93,7 @@ def wall_mask(cells, x, y, group):
     return bits
 
 
-def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None, swap=None):
+def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None, swap=None, post=None):
     """mode: vanilla | now | new. box = (x0, y0, x1, y1) in cells. ground(x, y) -> RGB for mode new.
     bare(x, y) -> RGBA tile drawn on cells with no object (mode new), like the runtime's zone floors.
     tone(name, fg, detail, tile) -> (fg_rgb, detail_rgb) or None: proposal recolours (mode new)."""
@@ -152,6 +152,8 @@ def render(map_name, mode, box, ground=None, night=None, tone=None, bare=None, s
                     t = zm.vanilla(key, fg, dt)
                     if t is not None and mode != "vanilla":
                         t = zm.bright_vanilla(key, fg, dt) if hasattr(zm, "bright_vanilla") else t
+                if t is not None and post and mode == "new":
+                    t = post(name, t)                           # runtime colour pulls (e.g. deeper jungle plants)
                 if t is not None:
                     cell.alpha_composite(t)
             if night:
