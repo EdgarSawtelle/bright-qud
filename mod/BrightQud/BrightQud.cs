@@ -67,7 +67,10 @@ namespace BrightQud
             public bool ClearMemory;
             public string UnderKey; // optional terrain drawn underneath (e.g. water under a swimmer)
             public Color Under, UnderDetail;
-            public int Style;      // auto-style for vanilla tiles (Style* constants)
+            public string OverlayKey; // optional effect drawn on top (a particle over a creature or terrain)
+            public Color OverlayFg, OverlayDetail;
+            public bool OverlayText;  // OverlayKey is a font glyph (text/<char code>)
+            public int Style;     // auto-style for vanilla tiles (Style* constants)
             public int Mutations;   // bit i = MutationOrder[i] is present (humanoid-kit tiles only)
             public int Frame;       // idle animation frame (0/1) for creatures
             public int Hud;         // map HUD: bits 0-1 ring (1 hostile, 2 ally), bits 2-4 health bucket,
@@ -198,6 +201,62 @@ namespace BrightQud
         }
 
         public static bool Exists(string key) => IsOurs(key);
+
+        // The same virtual tile with an effect drawn on top of it: particles otherwise replace the whole
+        // cell (the character vanished under a blood splash or the HP heart). Null if baseVirt isn't ours.
+        public static string WithOverlay(string baseVirt, string overlayKey, Color fg, Color detail, bool text)
+        {
+            if (baseVirt == null || overlayKey == null || !baseVirt.StartsWith(Prefix, StringComparison.Ordinal)) return null;
+            lock (Lock)
+            {
+                if (!Requests.TryGetValue(baseVirt, out Request req) || req.OverlayKey != null) return null;
+                string virt = baseVirt + "|o:" + overlayKey + "|" + Hex(fg) + "|" + Hex(detail) + (text ? "|t" : "");
+                if (!Requests.ContainsKey(virt))
+                {
+                    req.OverlayKey = overlayKey;
+                    req.OverlayFg = fg;
+                    req.OverlayDetail = detail;
+                    req.OverlayText = text;
+                    Requests[virt] = req;
+                }
+                return virt;
+            }
+        }
+
+        // A font glyph as tile pixels in one colour, with a soft ink outline so it reads over busy tiles.
+        static Color[] Glyph(string key, Color color)
+        {
+            exTextureInfo info = SpriteManager.GetTextureInfo(key);
+            if (info == null || info.texture == null) return new Color[16 * 24];
+            Color[] src = info.texture.GetPixels(info.x, info.y, info.width, info.height);
+            var on = new bool[16 * 24];
+            for (int y = 0; y < 24; y++)
+                for (int x = 0; x < 16; x++)
+                {
+                    Color c = src[(y * info.height / 24) * info.width + x * info.width / 16];
+                    on[y * 16 + x] = c.r > 0.5f && c.a > 0.5f;
+                }
+            Color g = Brighten(color);
+            g.a = 1f;
+            var px = new Color[16 * 24];
+            for (int y = 0; y < 24; y++)
+                for (int x = 0; x < 16; x++)
+                {
+                    int i = y * 16 + x;
+                    if (on[i]) { px[i] = g; continue; }
+                    for (int dy = -1; dy <= 1 && px[i].a == 0f; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = x + dx, ny = y + dy;
+                            if (nx >= 0 && ny >= 0 && nx < 16 && ny < 24 && on[ny * 16 + nx])
+                            {
+                                px[i] = new Color(Ink.r, Ink.g, Ink.b, 0.55f);
+                                break;
+                            }
+                        }
+                }
+            return px;
+        }
 
         static bool IsOurs(string key)
         {
@@ -611,6 +670,14 @@ namespace BrightQud
                 if (under.Length == px.Length)
                     for (int i = 0; i < px.Length; i++) px[i] = Over(px[i], under[i]);
             }
+            if (req.OverlayKey != null && px.Length == 16 * 24)
+            {
+                Color[] ov = req.OverlayText ? Glyph(req.OverlayKey, req.OverlayFg)
+                    : IsOurs(req.OverlayKey) ? Recolored(req.OverlayKey, req.OverlayFg, req.OverlayDetail)
+                    : Vanilla(req.OverlayKey, Brighten(req.OverlayFg), Brighten(req.OverlayDetail));
+                if (ov.Length == px.Length)
+                    for (int i = 0; i < px.Length; i++) px[i] = Over(ov[i], px[i]);
+            }
             if (req.Memory)
             {
                 Color memoryTint = QudColor.ColorMap['K'];
@@ -971,9 +1038,10 @@ namespace BrightQud
 
     // Tile particles (thrown items without VFX, ability blips...) paint the game's teal 'k' background behind
     // their tile and skip the recolor. Afterwards: ground color behind them and the Bright Qud tile.
-    // Text particles (blood splashes, level-up notes, the HP heart...) write a glyph on 'k' teal over whatever
-    // the cell showed, so creatures vanished for a frame: their cells are put back, other cells keep the
-    // glyph on the ground colour.
+    // Text particles (blood splashes, level-up notes, the HP heart, bubbles...) write a glyph on 'k' teal over
+    // whatever the cell showed, and tile particles replace it: creatures, water and soup vanished for a frame.
+    // Where the cell showed one of our tiles, it is put back with the effect drawn on top of it; plain text
+    // cells keep the glyph on the ground colour.
     [HarmonyPatch(typeof(XRL.UI.ParticleManager), nameof(XRL.UI.ParticleManager.Render),
         new Type[] { typeof(ScreenBuffer) })]
     public static class ParticlePatch
@@ -981,29 +1049,43 @@ namespace BrightQud
         struct Saved
         {
             public int X, Y;
-            public bool Creature;
             public string Tile;
             public char Char;
             public Color Fg, Bg, Detail;
             public bool HFlip, VFlip;
+            public string Particle; // tile particle's tile, null for text
+
+            public bool Ours => Char == '\0' && Tile != null && Tile.StartsWith(Recolor.Prefix, StringComparison.Ordinal);
+
+            public void Restore(ConsoleChar ch)
+            {
+                ch._Char = Char;
+                ch._Tile = Tile;
+                ch.Foreground = Fg;
+                ch.Background = Bg;
+                ch.Detail = Detail;
+                ch.HFlip = HFlip;
+                ch.VFlip = VFlip;
+            }
         }
 
-        [ThreadStatic] static List<(int x, int y, string tile)> drawn;
         [ThreadStatic] static List<Saved> texts;
 
         static void Prefix(XRL.UI.ParticleManager __instance, ScreenBuffer Buffer)
         {
-            if (drawn == null) drawn = new List<(int, int, string)>();
             if (texts == null) texts = new List<Saved>();
-            drawn.Clear();
             texts.Clear();
             try
             {
                 if (!Settings.EffectGround || !XRL.UI.Options.UseTextParticleVFX) return;
-                foreach (var t in __instance.TileParticles)
-                    if (t != null && !t.Tile.IsNullOrEmpty())
-                        drawn.Add((Convert.ToInt32(t.x), Convert.ToInt32(t.y), t.Tile));
                 Zone zone = The.ActiveZone;
+                for (int i = 0; i < __instance.TileParticles.Count && __instance.TileParticles[i].DelayMS <= 0; i++)
+                {
+                    var t = __instance.TileParticles[i];
+                    int x = Convert.ToInt32(t.x), y = Convert.ToInt32(t.y);
+                    if (t.Tile.IsNullOrEmpty() || x < 0 || y < 0 || x > 79 || y > 24) continue;
+                    Save(Buffer, x, y, t.Tile);
+                }
                 if (zone == null || zone.IsWorldMap()) return;
                 for (int i = 0; i < __instance.Particles.Count && __instance.Particles[i].DelayMS <= 0; i++)
                 {
@@ -1041,15 +1123,19 @@ namespace BrightQud
                 if (c == '{' || c == '}' || c == '|') continue;
                 int cx = x + n++;
                 if (cx < 0 || cx > 79) continue;
-                ConsoleChar ch = buffer.Buffer[cx, y];
-                if (ch == null) continue;
-                bool creature = ch._Tile != null && zone.GetCell(cx, y)?.GetFirstObjectWithPart("Brain") != null;
-                texts.Add(new Saved
-                {
-                    X = cx, Y = y, Creature = creature, Tile = ch._Tile, Char = ch._Char, Fg = ch.Foreground,
-                    Bg = ch.Background, Detail = ch.Detail, HFlip = ch.HFlip, VFlip = ch.VFlip,
-                });
+                Save(buffer, cx, y, null);
             }
+        }
+
+        static void Save(ScreenBuffer buffer, int x, int y, string particle)
+        {
+            ConsoleChar ch = buffer.Buffer[x, y];
+            if (ch == null) return;
+            texts.Add(new Saved
+            {
+                X = x, Y = y, Tile = ch._Tile, Char = ch._Char, Fg = ch.Foreground, Bg = ch.Background,
+                Detail = ch.Detail, HFlip = ch.HFlip, VFlip = ch.VFlip, Particle = particle,
+            });
         }
 
         static void Postfix(ScreenBuffer Buffer)
@@ -1061,36 +1147,44 @@ namespace BrightQud
                     {
                         ConsoleChar ch = Buffer.Buffer[s.X, s.Y];
                         if (ch == null) continue;
-                        if (s.Creature)
+                        if (s.Particle != null)
                         {
-                            ch._Char = s.Char;
-                            ch._Tile = s.Tile;
-                            ch.Foreground = s.Fg;
-                            ch.Background = s.Bg;
-                            ch.Detail = s.Detail;
-                            ch.HFlip = s.HFlip;
-                            ch.VFlip = s.VFlip;
+                            if (ch._Tile != s.Particle) continue;   // already handled, or drawn over
+                            Color fg = ch.Foreground, det = ch.Detail;
+                            string over = s.Ours ? Recolor.WithOverlay(s.Tile, Recolor.Key(s.Particle), fg, det, false) : null;
+                            if (over != null)
+                            {
+                                s.Restore(ch);
+                                ch._Tile = over;
+                                continue;
+                            }
+                            // Over plain ground: the ground colour behind it and the Bright Qud tile.
+                            if (Ground.IsDefault(ch.Background)) ch.Background = Ground.GroundAt(s.X, s.Y);
+                            string virt = Recolor.Resolve(s.Particle, fg, det, false, null, default,
+                                Settings.AutoStyle ? Recolor.StyleObject : Recolor.StyleNone);
+                            if (virt != null) ch._Tile = virt;
+                            continue;
                         }
-                        else if (ch._Char != '\0' && Ground.IsDefault(ch.Background))
+                        char glyph = ch._Char;
+                        if (glyph == '\0') continue;                // not overwritten, or already handled
+                        if (s.Ours)
+                        {
+                            Color gc = ch.Foreground;
+                            s.Restore(ch);
+                            if (glyph != ' ')
+                            {
+                                string over = Recolor.WithOverlay(s.Tile, "text/" + (int)glyph, gc, gc, true);
+                                if (over != null) ch._Tile = over;
+                            }
+                        }
+                        else if (Ground.IsDefault(ch.Background))
                             ch.Background = Ground.IsDefault(s.Bg) ? Ground.GroundAt(s.X, s.Y) : s.Bg;
-                    }
-                if (drawn != null)
-                    foreach (var (x, y, tile) in drawn)
-                    {
-                        if (x < 0 || y < 0 || x > 79 || y > 24) continue;
-                        ConsoleChar ch = Buffer.Buffer[x, y];
-                        if (ch == null || ch._Tile != tile) continue;
-                        if (Ground.IsDefault(ch.Background)) ch.Background = Ground.GroundAt(x, y);
-                        string virt = Recolor.Resolve(tile, ch.Foreground, ch.Detail, false, null, default,
-                            Settings.AutoStyle ? Recolor.StyleObject : Recolor.StyleNone);
-                        if (virt != null) ch._Tile = virt;
                     }
             }
             catch (Exception e)
             {
                 MetricsManager.LogException("BrightQud.Particles", e);
             }
-            drawn?.Clear();
             texts?.Clear();
         }
     }
@@ -1622,7 +1716,10 @@ namespace BrightQud
             bool trickle = false;
             if (liquidTile != null && e.Tile != null && e.Tile == liquidTile && cell.ParentZone != null
                 && !cell.ParentZone.IsWorldMap())
+            {
                 ch._Tile = LiquidTile(liquid, liquidTile, out trickle);
+                if (!memory) SeenLiquid(cell.ParentZone, liquid, ch.Foreground, ch.Detail);
+            }
             if (liquidTile != null && e.Tile != null && e.Tile != liquidTile)
             {
                 // The same tile and colours as the liquid's own cells (a mushroom standing in primordial
@@ -1640,6 +1737,13 @@ namespace BrightQud
                 int lk = ZoneKind(cell);
                 underColor = ZoneLiquid(lk, underColor, false);
                 underDetail = ZoneLiquid(lk, underDetail, true);
+                // Best: the colours this liquid's own cells are drawn with (mixes like algal water are
+                // coloured by the render event, not by the object's Render part).
+                if (LiquidSeenColors(cell.ParentZone, liquid, out Color sf, out Color sd))
+                {
+                    underColor = sf;
+                    underDetail = sd;
+                }
                 // The game tints the whole cell with the liquid color; with the liquid drawn as a tile
                 // underneath, the rest of the cell should show the normal ground (puddles are small).
                 Color ground = ColorFor(cell);
@@ -2285,6 +2389,33 @@ namespace BrightQud
                     SoupTiles[m] = soup = "Liquids/Gunk/deep-" + m[0] + "0" + m[2] + "0" + m[4] + "0" + m[6] + "0.png";
                 return soup;
             }
+        }
+
+        // Colours each kind of liquid was first drawn with in the active zone (game thread only).
+        static Zone liquidZone;
+        static readonly Dictionary<(string, string, bool), (Color, Color)> liquidSeen =
+            new Dictionary<(string, string, bool), (Color, Color)>();
+
+        static (string, string, bool) LiquidKey(XRL.World.GameObject liquid)
+        {
+            var lv = liquid.LiquidVolume;
+            return (lv?.GetPrimaryLiquidID(), lv?.GetSecondaryLiquidID(), lv != null && lv.IsWadingDepth());
+        }
+
+        static void SeenLiquid(Zone zone, XRL.World.GameObject liquid, Color fg, Color detail)
+        {
+            if (zone != liquidZone) { liquidSeen.Clear(); liquidZone = zone; }
+            var key = LiquidKey(liquid);
+            if (key.Item1 != null && !liquidSeen.ContainsKey(key)) liquidSeen[key] = (fg, detail);
+        }
+
+        static bool LiquidSeenColors(Zone zone, XRL.World.GameObject liquid, out Color fg, out Color detail)
+        {
+            fg = detail = default;
+            if (zone != liquidZone || !liquidSeen.TryGetValue(LiquidKey(liquid), out var c)) return false;
+            fg = c.Item1;
+            detail = c.Item2;
+            return true;
         }
 
         // What a bare cell shows: the zone's ground tile (null where the ground is a plain colour) and colour.
