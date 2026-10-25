@@ -9,7 +9,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Mutations show on characters (horns, wings, extra arms, carapace, quills, two heads...)
 [*]Seed-generated colours are kept; tiles from other mods get an automatic matching restyle
 [*]Choose your character's look; gentle idle animation (creature and tile animation have separate switches)
-[*]Zones with their own look: lavender crystal Moon Stair with a twinkling hexagon floor, lush mossy Rainbow Wood with tiny glowing mushrooms, Joppa's salt-spangled earth; calm, finely textured ground for deserts, canyons, jungles, salt marshes and more; warm torch light at night and in caves
+[*]Zones with their own look: lavender crystal Moon Stair with a twinkling hexagon floor, lush mossy Rainbow Wood with tiny glowing mushrooms, Joppa's salt-spangled earth, Red Rock, Rust Wells, Kyakukya's cage-fungus houses, Grit Gate, Bey Lah's petal huts, flower fields, jungles, hills and mountains; calm, finely textured ground; warm and coloured light at night and in caves
 [*]Redrawn frogs (svardym), reptiles and Putus Templars
 [/list]
 

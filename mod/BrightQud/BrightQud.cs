@@ -1391,7 +1391,12 @@ namespace BrightQud
                 int kind = ZoneKind(cell);
                 if (wallSwap != null && top != null && cell.X < wallSwap.GetLength(0) && cell.Y < wallSwap.GetLength(1)
                     && wallSwap[cell.X, cell.Y] != null && SwapKind(top.Blueprint) != 0)
+                {
                     ch._Tile = wallSwap[cell.X, cell.Y];
+                    int sk = SwapKind(top.Blueprint);
+                    if (sk == 3) { ch.Foreground = MarlChalk; ch.Detail = MarlShade; }
+                    else if (sk == 4) { ch.Foreground = LimestoneGlaucous; ch.Detail = LimestoneShade; }
+                }
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 if (kind == KindJoppa && bare)
                 {
@@ -1711,11 +1716,11 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
-            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519") };
+            Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
-            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d") };
+            Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965") };
         const int FamilyDeepJungle = 12;
         static readonly Color PinPrick = Hex("4a4528");
         const int FamilyJungle = 10;
@@ -1741,8 +1746,10 @@ namespace BrightQud
         {
             switch (bp)
             {
-                case "TerrainSixDayStilt": case "TerrainHills": case "TerrainMountains": case "TerrainMountainsSpindleShadow":
+                case "TerrainSixDayStilt":
                     return 0;
+                case "TerrainHills": case "TerrainMountains": case "TerrainMountainsSpindleShadow":
+                    return 13;   // hills: dry dirt, scree, wind-flattened grass
                 case "TerrainRedRock":
                     return FamilyRedRock;   // "a naturally reddened outcropping": redder than the canyon
                 case "TerrainRustWell":
@@ -1978,7 +1985,11 @@ namespace BrightQud
         // the cage-like fruiting body") becomes the cage fungus wall; Bey Lah's petal-strewn brinestalk gets
         // pale trunks with pressed petals. Joined to same-kind N/E/S/W neighbours; computed per zone refresh.
         static string[,] wallSwap;
-        static readonly string[] CageTiles = BuildWallTiles("cage"), PetalTiles = BuildWallTiles("petal");
+        static readonly string[][] SwapTiles = { null, BuildWallTiles("cage"), BuildWallTiles("petal"),
+            BuildWallTiles("marl"), BuildWallTiles("limestone") };
+        // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
+        static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
+        static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
 
         static string[] BuildWallTiles(string material)
         {
@@ -1988,9 +1999,11 @@ namespace BrightQud
             return t;
         }
 
-        // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk; 0 = no swap.
+        // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
+        // 4 = limestone (mountains); 0 = no swap.
         static int SwapKind(string blueprint) =>
-            blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2 : 0;
+            blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
+            : blueprint == "Marl" ? 3 : blueprint == "Limestone" ? 4 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
@@ -2020,7 +2033,7 @@ namespace BrightQud
                     if (k == 0) continue;
                     int n = y > 0 && kind[x, y - 1] == k ? 8 : 0, e = x < w - 1 && kind[x + 1, y] == k ? 4 : 0;
                     int s = y < h - 1 && kind[x, y + 1] == k ? 2 : 0, wv = x > 0 && kind[x - 1, y] == k ? 1 : 0;
-                    wallSwap[x, y] = (k == 1 ? CageTiles : PetalTiles)[n | e | s | wv];
+                    wallSwap[x, y] = SwapTiles[k][n | e | s | wv];
                 }
         }
 

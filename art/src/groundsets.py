@@ -29,6 +29,7 @@ FAMILIES = {
     "rustcave": ("2f2723", "352c27", "b0602e"),  # Rust Wells strata: bitumen-dark floor, rust flakes
     "jungle": ("3a3022", "3f3427", "3c6a2c"),    # Jungle: dark wet loam, leaf litter, roots, moss
     "deepjungle": ("2c2519", "312a1d", "2f5a26"),  # Deep jungle: darker loam, braided roots, moss
+    "hills": ("7d7460", "827965", "8a8a5a"),       # Hills and mountains: dry dirt, scree, wind-flattened grass
     "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
 }
 
@@ -201,6 +202,20 @@ def deepjungle(t, base, acc):
             t.put(x + i, y + 1 - (i // 2) % 2, shade(base, 0.8))
 
 
+def hills(t, base, acc):
+    """Hills and mountains: "old, dry, quiet and windy" - dry dirt, loose scree, grass flattened by the wind,
+    a few chalk flecks."""
+    t.grain(base, 30)
+    for _ in range(t.rnd.randrange(2, 4)):                 # scree: small stones with an under-shadow
+        t.pebble(base, t.rnd.randrange(1, 14), t.rnd.randrange(2, 21), t.rnd.choice((1, 1, 2)))
+    for _ in range(t.rnd.randrange(2, 4)):                 # wind-flattened grass: short diagonal blades
+        x, y = t.rnd.randrange(2, 13), t.rnd.randrange(4, 22)
+        for i in range(3):
+            t.put(x + i, y - (i // 2), shade(acc, 0.9 + 0.05 * i, 0.7))
+    for _ in range(t.rnd.randrange(1, 3)):                 # chalk flecks
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), shade(base, 1.22, 0.5))
+
+
 def meadow(t, base, acc):
     """Flower fields: "prismatic filament colonizes the cracks between the salted rot" - salt cracks with
     faint coloured threads in them, short grass. Every colour stays close to the ground."""
@@ -236,7 +251,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle}
+DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills}
 
 
 def tiles(family):

@@ -287,13 +287,42 @@ def _petal_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x + 1] = "m"
 
 
+def _marl_texture(g, y0, y1, rnd, light, mid, dark):
+    """Hills: "lacustrine ecosystems, cast in lime-rich mud ... in chalk-white shine" - wavy chalk strata."""
+    phase = rnd.randrange(16)
+    for y in range(y0, y1):
+        for x in range(16):
+            band = (y - y0 + (1 if (x + phase) % 8 < 4 else 0)) % 5    # gently waving bands
+            g[y][x] = dark if band == 4 else (light if band in (0, 1) else mid)
+    for _ in range(3):                                         # ripple marks of the old lake bed
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(1, 14)
+        if g[y][x] == mid:
+            g[y][x] = light
+            g[y][x + 1] = light
+
+
+def _limestone_texture(g, y0, y1, rnd, light, mid, dark):
+    """Mountains: "the glaucous rock is a necropolis" - bedded stone with small fossil shells."""
+    for y in range(y0, y1):
+        r = (y - y0) % 6
+        for x in range(16):
+            g[y][x] = dark if r == 5 else (light if r == 0 else mid)
+        if r != 5 and ((y - y0) // 6) % 2 == 0:
+            g[y][(3 + 9 * ((y - y0) // 6)) % 16] = dark           # sparse vertical joints between beds
+    for _ in range(3):                                         # fossil pocks: a dark dot with a lit rim
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(1, 15)
+        if g[y][x] == mid:
+            g[y][x] = dark
+            g[y][x - 1] = light
+
+
 MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_texture, "metal": _metal_texture,
              "slab": _slab_texture, "wood": _wood_texture, "brick": _brick_texture, "stone": _stone_texture,
              "plant": _plant_texture, "shroom": _shroom_texture, "crystal": _crystal_texture, "bone": _bone_texture,
              "tech": _tech_texture, "scale": _scale_texture,
-             "cage": _cage_texture, "petal": _petal_texture}
+             "cage": _cage_texture, "petal": _petal_texture, "marl": _marl_texture, "limestone": _limestone_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
-EXTRA_WALL_MATERIALS = ["cage", "petal"]
+EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

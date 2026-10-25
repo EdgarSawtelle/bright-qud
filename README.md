@@ -36,7 +36,8 @@ Every helper below has its own switch in **Options → Mods**.
   plants like the marsh's glowpads light the ground in their own colour. Red Rock gets
   redder rock above and a red-brown rubble floor in its caves; the Rust Wells get rust-flaked
   ground, tar-dark floors below, and fulcrete looks like bitumen with pale gravel; the jungle floor is wet loam with soft sunflecks;
-  Kyakukya's houses are glossy cage-lattice fungus and Bey Lah's huts are petal-strewn brinestalk. Frogs, reptiles and Templars redrawn.
+  Kyakukya's houses are glossy cage-lattice fungus and Bey Lah's huts are petal-strewn brinestalk;
+  hills and mountains get soft chalk marl and glaucous limestone walls. Frogs, reptiles and Templars redrawn.
 
 ### Easier to read the map
 | Helper | What you see |
