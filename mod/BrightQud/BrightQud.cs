@@ -75,6 +75,7 @@ namespace BrightQud
             public int Frame;       // idle animation frame (0/1) for creatures
             public int Hud;         // map HUD: bits 0-1 ring (1 hostile, 2 ally), bits 2-4 health bucket,
                                     // bit 5 item sparkle
+            public string Doll;     // paper doll description (Doll.cs): the layers stacked instead of Key
         }
 
         // Visible mutations: overlay parts first, then skin tints (see Generated.cs).
@@ -284,6 +285,22 @@ namespace BrightQud
             string underKey = under != null ? Key(under) : null;
             if (underKey != null && !IsOurs(underKey) && !underKey.StartsWith("liquids/", StringComparison.Ordinal))
                 underKey = null;
+            if (tile.StartsWith(Doll.Prefix, StringComparison.Ordinal))
+            {
+                string dv = Prefix + tile + (memory ? clearMemory ? "|mc" : "|m" : "")
+                    + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) : "")
+                    + (frame != 0 ? "|f" + frame : "") + (hud != 0 ? "|h" + hud : "");
+                lock (Lock)
+                {
+                    Requests[dv] = new Request
+                    {
+                        Key = Doll.LayerPrefix + "body/base", Doll = tile, Fg = fg, Detail = detail, Memory = memory,
+                        ClearMemory = clearMemory, UnderKey = underKey, Under = underColor, UnderDetail = underDetail,
+                        Style = StyleNone, Frame = frame, Hud = hud
+                    };
+                }
+                return dv;
+            }
             bool ours = IsOurs(key);
             if (style == StyleProjectile && !ours) return null; // vanilla projectiles are fine as they are
             if (ours && style != StyleProjectile) style = StyleNone; // hand-drawn tiles carry their own style
@@ -337,7 +354,22 @@ namespace BrightQud
                     info = SpriteManager.GetTextureInfo(req.Key);
                     return true;
                 }
-                if (Built.Count > MaxCache) Built.Clear();
+                NewFrame();
+                // Frame budget: big fights (damage numbers, splashes, hit flashes over many creatures) asked
+                // for dozens of new textures in one frame and the game stuttered. Past the budget a cell gets
+                // a stand-in now and is asked again on a later frame (Redraw).
+                if (frameBuilds >= MinBuildsPerFrame && frameWatch.ElapsedTicks > BudgetTicks)
+                {
+                    Deferred.Add(path);
+                    deferredTotal++;
+                    int o = path.IndexOf("|o:", StringComparison.Ordinal);
+                    if (o < 0 || !Built.TryGetValue(path.Substring(0, o), out info) || info == null || info.texture == null)
+                        info = SpriteManager.GetTextureInfo(req.Key);
+                    return true;
+                }
+                if (Built.Count > MaxCache) Trim();
+                long start = frameWatch.ElapsedTicks;
+                frameWatch.Start();
                 try
                 {
                     info = Build(req);
@@ -348,8 +380,80 @@ namespace BrightQud
                     MetricsManager.LogException("BrightQud.Build " + req.Key, e);
                     info = SpriteManager.GetTextureInfo(req.Key);
                 }
+                frameWatch.Stop();
+                frameBuilds++;
+                buildsTotal++;
+                buildTicksTotal += frameWatch.ElapsedTicks - start;
                 Built[path] = info;
                 return true;
+            }
+        }
+
+        // Build budget per frame (UI thread only; callers hold Lock).
+        const int MinBuildsPerFrame = 2;
+        static readonly long BudgetTicks = System.Diagnostics.Stopwatch.Frequency * 3 / 1000; // 3 ms
+        static readonly System.Diagnostics.Stopwatch frameWatch = new System.Diagnostics.Stopwatch();
+        static readonly HashSet<string> Deferred = new HashSet<string>();
+        static int budgetFrame = -1, frameBuilds, perfLines;
+        static long buildsTotal, deferredTotal, buildTicksTotal;
+        static float perfSince;
+
+        static void NewFrame()
+        {
+            int f = Time.frameCount;
+            if (f == budgetFrame) return;
+            if (frameBuilds > 0 && frameWatch.ElapsedTicks > BudgetTicks * 4 && perfLines < 40)
+            {
+                perfLines++;
+                UnityEngine.Debug.Log("BrightQud perf: frame " + budgetFrame + " built " + frameBuilds + " tiles in "
+                    + (frameWatch.ElapsedTicks * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("0.0") + " ms");
+            }
+            budgetFrame = f;
+            frameBuilds = 0;
+            frameWatch.Reset();
+            // A summary about once a minute while tiles are being built.
+            if (Time.realtimeSinceStartup - perfSince > 60f && buildsTotal > 0 && perfLines < 40)
+            {
+                perfLines++;
+                perfSince = Time.realtimeSinceStartup;
+                UnityEngine.Debug.Log("BrightQud perf: " + buildsTotal + " tiles built ("
+                    + (buildTicksTotal * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("0") + " ms), "
+                    + deferredTotal + " postponed, cache " + Built.Count + ", requests " + Requests.Count);
+            }
+        }
+
+        // Cells that got a stand-in: forget the game's "already drawn" name so it asks for the tile again,
+        // and have the map redrawn this frame. Called before every GameManager.OnUpdate (RedrawPatch).
+        public static void Redraw()
+        {
+            lock (Lock)
+            {
+                if (Deferred.Count == 0 || Time.frameCount == budgetFrame) return;
+                string[,] current = GameManager.Instance?.CurrentTile;
+                if (current != null)
+                    for (int x = 0; x < current.GetLength(0); x++)
+                        for (int y = 0; y < current.GetLength(1); y++)
+                            if (current[x, y] != null && Deferred.Contains(current[x, y])) current[x, y] = null;
+                Deferred.Clear();
+                ConsoleLib.Console.TextConsole.BufferUpdated = true;
+            }
+        }
+
+        // Cache full: keep what the map shows right now (dropping everything forced the whole screen to be
+        // rebuilt in one frame), forget the rest.
+        static void Trim()
+        {
+            var keep = new Dictionary<string, exTextureInfo>();
+            string[,] current = GameManager.Instance?.CurrentTile;
+            if (current != null)
+                foreach (string t in current)
+                    if (t != null && Built.TryGetValue(t, out exTextureInfo i)) keep[t] = i;
+            Built.Clear();
+            foreach (var kv in keep) Built[kv.Key] = kv.Value;
+            if (perfLines < 40)
+            {
+                perfLines++;
+                UnityEngine.Debug.Log("BrightQud perf: tile cache trimmed, kept " + keep.Count);
             }
         }
 
@@ -650,7 +754,10 @@ namespace BrightQud
             // Frame 1: brightqudframe/<key>; ambient tiles also have frames 2-3 (brightqudframe2/, 3/).
             string frameKey = (req.Frame <= 1 ? "brightqudframe/" : "brightqudframe" + req.Frame + "/") + req.Key;
             bool altFrame = req.Frame >= 1 && IsOurs(frameKey);
-            Color[] px = altFrame ? Recolored(frameKey, req.Fg, req.Detail)
+            Color[] px = req.Doll != null
+                ? Doll.Compose(req.Doll, (k, f, d) => IsOurs(Key(k)) ? Recolored(Key(k), f, d) : null,
+                    p => Stylize(p, 16, 24, StyleObject))
+                : altFrame ? Recolored(frameKey, req.Fg, req.Detail)
                 : IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
                 : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail)), 16, 24, req.Style)
                 : Vanilla(req.Key, req.Fg, req.Detail);
@@ -765,6 +872,7 @@ namespace BrightQud
                 bool memory = !Event.Visible || (int)Event.Lit <= 1;
                 Ground.Apply(__instance, Event, memory, out string under, out Color underColor, out Color underDetail,
                     out int style, out int mutations, out int frame, out bool isPlayer, out int hud);
+                if (isPlayer && Settings.PaperDoll && The.Player != null) Doll.Update(The.Player, __instance.Foreground);
                 string tile = isPlayer ? Settings.PlayerTile(__instance._Tile) : __instance._Tile;
                 string virt = Recolor.Resolve(tile, __instance.Foreground, __instance.Detail, memory, under,
                     underColor, style, mutations, frame, hud, underDetail);
@@ -1419,6 +1527,7 @@ namespace BrightQud
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
             abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
+        static bool paperDoll = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
 
         static void Refresh()
@@ -1454,8 +1563,9 @@ namespace BrightQud
                 font = XRL.UI.Options.GetOption("OptionBrightQudFont", "Clear mono") ?? "Game default";
                 abilityBar = XRL.UI.Options.GetOption("OptionBrightQudAbilityBar", "More") ?? "Game default";
                 uiTheme = XRL.UI.Options.GetOption("OptionBrightQudTheme", "Qud teal") ?? "Qud teal";
-                string look = XRL.UI.Options.GetOption("OptionBrightQudPlayerLook", "Game default");
-                playerLook = look.IsNullOrEmpty() || look.EqualsNoCase("Game default") ? null
+                string look = XRL.UI.Options.GetOption("OptionBrightQudPlayerLook", "Worn gear");
+                paperDoll = look.IsNullOrEmpty() || look.EqualsNoCase("Worn gear");
+                playerLook = paperDoll || look.EqualsNoCase("Game default") ? null
                     : "brightqudlook/" + look.ToLowerInvariant();
             }
             catch (Exception e)
@@ -1506,9 +1616,13 @@ namespace BrightQud
         // Tile key of the chosen player look, or null for the game's own tile.
         public static string PlayerLook { get { Refresh(); return playerLook; } }
 
-        // The tile to draw for the player: the chosen look if it exists, else the game's tile.
+        // "Worn gear": the player is drawn from their equipment (Doll.cs).
+        public static bool PaperDoll { get { Refresh(); return paperDoll; } }
+
+        // The tile to draw for the player: worn gear (paper doll), the chosen look, else the game's tile.
         public static string PlayerTile(string gameTile)
         {
+            if (PaperDoll && Doll.Current != null) return Doll.Current;
             string look = PlayerLook;
             return look != null && Recolor.Exists(look) ? look : gameTile;
         }
@@ -2654,6 +2768,22 @@ namespace BrightQud
             catch (Exception ex)
             {
                 MetricsManager.LogException("BrightQud.PooledSprite", ex);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(GameManager), nameof(GameManager.OnUpdate), new Type[0])]
+    public static class RedrawPatch
+    {
+        static void Prefix()
+        {
+            try
+            {
+                Recolor.Redraw();
+            }
+            catch (Exception e)
+            {
+                MetricsManager.LogException("BrightQud.Redraw", e);
             }
         }
     }
