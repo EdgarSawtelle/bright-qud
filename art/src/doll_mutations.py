@@ -36,16 +36,66 @@ def carapace():
     return c.out()
 
 
+def _mir(half):
+    """16-col grid from 8-col left halves (mirrored)."""
+    rows = []
+    for h in half:
+        assert len(h) == 8, h
+        rows.append(h + h[::-1])
+    return rows
+
+
 def wings():
-    c = C()
-    _poly(c, [(5, 9), (3, 5), (0, 0), (0, 12), (1, 16), (2, 15), (3, 18), (4, 17)], "4")
-    for (x1, y1) in ((0, 12), (1, 15), (2, 17)):
-        c.line(4, 10, x1, y1, "5", mirror=True)
-    c.line(5, 9, 0, 0, "6", mirror=True)
-    c.line(5, 10, 1, 2, "6", mirror=True)
-    c.m(0, 12, "5"); c.m(1, 16, "5"); c.m(3, 18, "5")
-    c.m(0, 1, "w"); c.m(1, 3, "w")
-    return c.out()
+    """FOLDED wings (walking): two feathered arches above the shoulders and a narrow feathered edge
+    down both sides of the body to the hips, ending in short feather tips. Roles 4/5/6."""
+    half = [
+        "........",  # 0
+        "........",  # 1
+        "........",  # 2
+        "........",  # 3
+        "........",  # 4
+        "...4....",  # 5
+        "..44....",  # 6
+        "..455...",  # 7
+        ".4455...",  # 8
+        ".4455666",  # 9
+        ".445666.",  # 10
+        "..45....",  # 11
+        ".44.....",  # 12
+        "..45....",  # 13
+        ".44.....",  # 14
+        "..46....",  # 15
+        ".45.....",  # 16
+        "..6.....",  # 17
+        "........", "........", "........", "........", "........", "........",
+    ]
+    g = _mir(half)
+    return g
+
+
+
+
+def wingsopen():
+    """SPREAD wings (flying): bone leading-edge arm up and out, separate feather fingers with gaps."""
+    half = [
+        "........",  # 0
+        ".w..4...",  # 1
+        ".w..4...",  # 2
+        "5w..5...",  # 3
+        "5t..5...",  # 4
+        "5w..5...",  # 5
+        "5.w.5...",  # 6
+        "5.w.6...",  # 7
+        "4.w.6...",  # 8
+        "5.wt....",  # 9
+        "5.5wt...",  # 10
+        "6.5.....",  # 11
+        "..5.....",  # 12
+        "..6.....",  # 13
+        "........", "........", "........", "........", "........",
+        "........", "........", "........", "........", "........",
+    ]
+    return _mir(half[:24])
 
 
 def quills():
@@ -168,7 +218,7 @@ def horns():
 
 
 LAYERS = {
-    "mutback/carapace": carapace(), "mutback/wings": wings(), "mutback/quills": quills(),
+    "mutback/carapace": carapace(), "mutback/wings": wings(), "mutback/wingsopen": wingsopen(), "mutback/quills": quills(),
     "mutback/stinger": stinger(), "mutfront/arms": arms(), "mutfront/legs": legs(),
     "mutfront/twoheads": twoheads(), "mutfront/beak": beak(), "mutfront/claws": claws(),
     "mutfront/fur": fur(), "muthead/horns": horns(),

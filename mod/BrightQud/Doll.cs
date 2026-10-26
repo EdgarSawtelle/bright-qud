@@ -36,7 +36,7 @@ namespace BrightQud
             lastPlayerId = player.ID;
             try
             {
-                current = Describe(player, shownFg);
+                current = Describe(player, shownFg, false);
             }
             catch (Exception e)
             {
@@ -46,18 +46,63 @@ namespace BrightQud
             return current;
         }
 
+        // Human NPCs (generic ones; named characters with their own sprite keep it): same system, their
+        // base clothes in their own seed/faction colours. Cached per creature, refreshed at most once a second.
+        static readonly Dictionary<string, bool> Eligible = new Dictionary<string, bool>();
+        static readonly Dictionary<string, KeyValuePair<int, string>> Npcs = new Dictionary<string, KeyValuePair<int, string>>();
+
+        public static string ForNpc(GameObject o, string gameTile, Color shownFg)
+        {
+            if (o?.Render == null || gameTile == null) return null;
+            string bk = o.Blueprint + "|" + gameTile;
+            if (!Eligible.TryGetValue(bk, out bool ok))
+            {
+                string t = gameTile.ToLowerInvariant();
+                ok = o.GetSpecies() == "human" && o.Body != null
+                    && (o.Body.Anatomy ?? "").StartsWith("Humanoid", StringComparison.Ordinal)
+                    && !t.Contains("npc-") && !t.Contains("wight");
+                Eligible[bk] = ok;
+            }
+            if (!ok) return null;
+            int now = Environment.TickCount;
+            if (o.ID != null && Npcs.TryGetValue(o.ID, out var cached) && unchecked(now - cached.Key) < 1000) return cached.Value;
+            string d;
+            try
+            {
+                d = Describe(o, shownFg, true);
+            }
+            catch (Exception e)
+            {
+                MetricsManager.LogException("BrightQud.DollNpc", e);
+                d = null;
+            }
+            if (Npcs.Count > 400) Npcs.Clear();
+            if (o.ID != null) Npcs[o.ID] = new KeyValuePair<int, string>(now, d);
+            return d;
+        }
+
         struct Layer
         {
             public string Key;
             public Color Fg, Detail;
         }
 
-        static string Describe(GameObject player, Color shownFg)
+        static string Describe(GameObject player, Color shownFg, bool npc)
         {
             var layers = new List<Layer>();
-            Material("linen", out Color linenFg, out Color linenDet);
-            layers.Add(new Layer { Key = "body/base", Fg = linenFg, Detail = linenDet });
             ItemColors(player, out Color selfFg, out Color selfDet);
+            // The player's undershirt is plain linen (the game paints the player white); an NPC's keeps its own
+            // seed/faction colours so villagers and factions stay recognisable.
+            Material("linen", out Color linenFg, out Color linenDet);
+            if (npc)
+            {
+                // Many human NPCs are painted plain white/grey: then their detail colour (if it is a real colour)
+                // dresses them, else linen.
+                ItemColors(player, out _, out _, out char fc, out char dc);
+                if ("yYkK".IndexOf(fc) < 0) { linenFg = selfFg; linenDet = selfDet; }
+                else if ("yYkK".IndexOf(dc) < 0) { linenFg = selfDet; linenDet = selfFg; }
+            }
+            layers.Add(new Layer { Key = "body/base", Fg = linenFg, Detail = linenDet });
 
             // Gear: one layer per worn item; weapons go in the hands.
             Color bodyFg = linenFg, bodyDet = linenDet;
@@ -125,6 +170,7 @@ namespace BrightQud
             {
                 if (!player.HasPart(kv.Key)) continue;
                 Layer l = new Layer { Key = kv.Value, Fg = selfFg, Detail = selfDet };
+                if (l.Key == "mutback/wings" && player.IsFlying) l.Key = "mutback/wingsopen"; // folded unless flying
                 if (DollTable.ChitinLayers.Contains(kv.Value)) { l.Fg = shell; l.Detail = legs; }
                 else if (kv.Value == "mutfront/arms" || kv.Value == "mutfront/twoheads") { l.Fg = bodyFg; l.Detail = bodyDet; }
                 layers.Add(l);
@@ -172,12 +218,15 @@ namespace BrightQud
             }
         }
 
-        static void ItemColors(GameObject o, out Color fg, out Color det) => ItemColors(o, out fg, out det, out char _);
+        static void ItemColors(GameObject o, out Color fg, out Color det) => ItemColors(o, out fg, out det, out char _, out char _);
 
-        static void ItemColors(GameObject o, out Color fg, out Color det, out char fgChar)
+        static void ItemColors(GameObject o, out Color fg, out Color det, out char fgChar) =>
+            ItemColors(o, out fg, out det, out fgChar, out char _);
+
+        static void ItemColors(GameObject o, out Color fg, out Color det, out char fgChar, out char detChar)
         {
             fgChar = 'y';
-            char detChar = 'K';
+            detChar = 'K';
             var r = o.Render;
             if (r != null)
             {

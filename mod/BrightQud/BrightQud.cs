@@ -874,6 +874,8 @@ namespace BrightQud
                     out int style, out int mutations, out int frame, out bool isPlayer, out int hud);
                 if (isPlayer && Settings.PaperDoll && The.Player != null) Doll.Update(The.Player, __instance.Foreground);
                 string tile = isPlayer ? Settings.PlayerTile(__instance._Tile) : __instance._Tile;
+                if (!isPlayer && Ground.DollTarget != null && Settings.NpcDoll)
+                    tile = Doll.ForNpc(Ground.DollTarget, __instance._Tile, __instance.Foreground) ?? tile;
                 string virt = Recolor.Resolve(tile, __instance.Foreground, __instance.Detail, memory, under,
                     underColor, style, mutations, frame, hud, underDetail);
                 if (virt != null) __instance._Tile = virt;
@@ -1527,7 +1529,7 @@ namespace BrightQud
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
             interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
             abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
-        static bool paperDoll = true;
+        static bool paperDoll = true, npcDoll = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
 
         static void Refresh()
@@ -1565,6 +1567,7 @@ namespace BrightQud
                 uiTheme = XRL.UI.Options.GetOption("OptionBrightQudTheme", "Qud teal") ?? "Qud teal";
                 string look = XRL.UI.Options.GetOption("OptionBrightQudPlayerLook", "Worn gear");
                 paperDoll = look.IsNullOrEmpty() || look.EqualsNoCase("Worn gear");
+                npcDoll = XRL.UI.Options.GetOption("OptionBrightQudNpcDoll", "Yes").EqualsNoCase("Yes");
                 playerLook = paperDoll || look.EqualsNoCase("Game default") ? null
                     : "brightqudlook/" + look.ToLowerInvariant();
             }
@@ -1618,6 +1621,7 @@ namespace BrightQud
 
         // "Worn gear": the player is drawn from their equipment (Doll.cs).
         public static bool PaperDoll { get { Refresh(); return paperDoll; } }
+        public static bool NpcDoll { get { Refresh(); return npcDoll; } }
 
         // The tile to draw for the player: worn gear (paper doll), the chosen look, else the game's tile.
         public static string PlayerTile(string gameTile)
@@ -1673,10 +1677,14 @@ namespace BrightQud
 
         // Also reports terrain to draw under the cell's top tile: the game shows only one object per
         // cell, so a swimmer would otherwise sit on a flat colored square instead of the water.
+        // The creature drawn in the cell being set (paper doll for human NPCs), null otherwise.
+        public static XRL.World.GameObject DollTarget;
+
         public static void Apply(ConsoleChar ch, RenderEvent e, bool memory, out string under, out Color underColor,
             out Color underDetail, out int style, out int mutations, out int frame, out bool isPlayer, out int hud)
         {
             isPlayer = false;
+            DollTarget = null;
             hud = 0;
             under = null;
             underColor = default;
@@ -1700,6 +1708,7 @@ namespace BrightQud
             }
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
             XRL.World.GameObject top = lastTop;
+            if (creature && !isPlayer) DollTarget = top;
             if (memory) hud = 0;
             if (!isPlayer && Settings.Ground && cell.ParentZone != null && cell.ParentZone.IsWorldMap())
             {
