@@ -19,10 +19,12 @@ other, because that clash is the frustration. No textures, no marks placed on th
 | 3 | 03_stylised_marks | Flat tones, outlined trees, peaks, site sprites | "Terrible": badly placed sprites on top |
 | 4 | 04_shaded_ground | Rounded borders, height surface shaded in tones | Textures "terrible", biomes generic |
 | 5 | 05_ten_styles | Ten cartoon styles with big motifs | "I hate all of them" |
-| 6 | 06_per_tile_last | Game's own glyph per cell, calm biome background eased across neighbours, glyphs in zone colours, curved water back | Waiting for a verdict |
+| 6 | 06_per_tile_last | Game's own glyph per cell, calm biome background eased across neighbours, glyphs in zone colours, curved water back | Rejected: does not curve around biomes, and the easing makes a weird hue |
 
 ## What to remember
 - Do not generate land, stamp marks or add texture: the user rejected each of those.
 - Attempt 6 is per cell only: Ground.Apply can set the background and glyph colours, no generated textures, and it brings back the
   game's own water tiles by dropping our redraw. That makes it cheap to try in game if the user wants it.
-- It still has stepped cell edges. Rounding them for real needs tile variants for each border shape.
+- Colour easing was the wrong tool: a cell has one background, so it gives blurred squares and muddy in-between hues. Do not ease colours.
+- Untried next idea: keep each biome's colour pure, and give each tile the neighbour's colour in a curved corner or edge cut, chosen from
+  which neighbours differ (the same way the game's lake and river tiles curve). Glyphs stay.
