@@ -2059,6 +2059,12 @@ namespace BrightQud
                 return;
             }
             if (!Settings.Ground) return;
+            // Gas is the top tile of its cell: without this steam or acid drifting over a textured floor wipes the floor.
+            if (e.Tile != null && e.Tile.StartsWith("Tiles2/gas_", StringComparison.Ordinal) && ZoneKind(cell) == KindFamily)
+            {
+                under = FamilyTiles[zoneFamily][Hash(cell.X, cell.Y) % 16];
+                underColor = underDetail = Color.white;
+            }
             // The Stilt's patterned floor under whatever stands on it: the game shows one object per cell, so
             // people and braziers stood on a plain square. Same colours as the floor's own cells.
             if (e.Tile != null && cell.PaintTile != null && e.Tile != cell.PaintTile && Recolor.RawKey(cell.PaintTile).StartsWith(PatternedFloor, StringComparison.Ordinal))
@@ -2313,15 +2319,16 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        const int FamilyChute = 17;   // Golgotha's trash chutes: dark rust silt and scrap
         const int FamilyRuins = 16;   // "vine-swathed works": dark mossy shale earth
         const int FamilyCanyon = 15;  // "rotted to crimson and salt": white chalk, crimson in the cracks
         const int FamilyDeepJungle = 12;
@@ -2369,7 +2376,9 @@ namespace BrightQud
                     return 11;   // meadow: salted pale green-grey with prismatic filaments
                 case "TerrainDeepJungle":
                     return FamilyDeepJungle;  // "a high-wreath canopy chokes off the last beams of light"
-                case "TerrainGolgotha": case "TerrainOmonporch":
+                case "TerrainGolgotha":
+                    return FamilyJungle;  // "shrouded in the rotting jungle"
+                case "TerrainOmonporch":
                     return 3;
                 case "TerrainGritGate":
                     return 4;
@@ -2400,6 +2409,11 @@ namespace BrightQud
                     {
                         // Red Rock: red-brown rubble; Rust Wells: bitumen; Grit Gate: carbon-black teal
                         zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : bp == "TerrainRustWell" ? FamilyRustCave : 4;
+                        return KindFamily;
+                    }
+                    if (bp == "TerrainGolgotha" && zone.Z <= 14)
+                    {
+                        zoneFamily = FamilyChute;
                         return KindFamily;
                     }
                     return KindPlain;
@@ -2567,7 +2581,7 @@ namespace BrightQud
         }
         static readonly Color ReefWater = Hex("3a8fb4"), Algae = Hex("3fae3a");
         static readonly Color SoupTeal = Hex("2f6e66"), LavaLight = Hex("d8843c");
-        static readonly Color VerdigrisMetal = Hex("5f857e"), VerdigrisPatina = Hex("4a6a4c");
+        static readonly Color VerdigrisMetal = Hex("6f8c80"), VerdigrisPatina = Hex("a4502b"); // patina: the rust running down it
 
         static Color[,] Flat(Zone zone, Color a, Color b)
         {
@@ -2600,7 +2614,8 @@ namespace BrightQud
             BuildWallTiles("marl"), BuildWallTiles("limestone"), BuildWallTiles("shale"), BuildWallTiles("sandstone"),
             BuildWallTiles("concrete"), BuildWallTiles("stiltmarble"), BuildWallTiles("stiltpillar"), BuildWallTiles("ironbars"),
             BuildWallTiles("fulcrete"), BuildWallTiles("fulcrete"), BuildWallTiles("mudroot"), BuildWallTiles("crysteel"),
-            BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete") };
+            BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete"),
+            BuildWallTiles("verdigris"), BuildWallTiles("verdigris2") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2631,7 +2646,7 @@ namespace BrightQud
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
         // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
         // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence, 11 = fulcrete, 12 = ebon fulcrete, 13 = mudroot,
-        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls; 0 = no swap.
+        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris; 0 = no swap.
         const int VineFulcrete = 18; // kind 11 in the surface ruins' tiles: "vine-swathed"
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
@@ -2640,7 +2655,8 @@ namespace BrightQud
             : blueprint.StartsWith("SixDayStiltPillarWall", StringComparison.Ordinal) ? 9 : blueprint == "IronFence" ? 10
             : blueprint.StartsWith("EbonFulcrete", StringComparison.Ordinal) ? 12 : blueprint.Contains("Fulcrete") ? 11
             : blueprint == "Mudroot" ? 13 : blueprint == "CrysteelPlatedWall" ? 14 : blueprint == "Star Orchid Marble" ? 15
-            : blueprint == "MachineWallColdTubing" ? 16 : blueprint == "MachineWallHotTubing" ? 17 : 0;
+            : blueprint == "MachineWallColdTubing" ? 16 : blueprint == "MachineWallHotTubing" ? 17
+            : blueprint == "Verdigris" ? 19 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
@@ -2671,7 +2687,8 @@ namespace BrightQud
                     int n = y > 0 && kind[x, y - 1] == k ? 8 : 0, e = x < w - 1 && kind[x + 1, y] == k ? 4 : 0;
                     int s = y < h - 1 && kind[x, y + 1] == k ? 2 : 0, wv = x > 0 && kind[x - 1, y] == k ? 1 : 0;
                     bool vines = k == 11 && zoneKind == KindFamily && zoneFamily == FamilyRuins;
-                    wallSwap[x, y] = SwapTiles[vines ? VineFulcrete : k][n | e | s | wv];
+                    int set = vines ? VineFulcrete : k == 19 && Hash(x, y) % 2 == 0 ? 20 : k; // 20: other rust streaks
+                    wallSwap[x, y] = SwapTiles[set][n | e | s | wv];
                 }
         }
 

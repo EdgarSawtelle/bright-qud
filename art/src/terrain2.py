@@ -455,6 +455,33 @@ def _tubing_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x] = "5"
 
 
+def _verdigris_texture(g, y0, y1, rnd, light, mid, dark):
+    """Golgotha: "chrome's graveyard" - riveted chrome plates gone green, rust bleeding down from the seams (detail)."""
+    for y in range(y0, y1):
+        r = (y - y0) % 10
+        for x in range(16):
+            g[y][x] = dark if r == 9 else (light if r == 0 and x % 7 else mid)
+        if r == 1:
+            g[y][2] = dark
+            g[y][12] = dark                                    # rivets
+    for _ in range(4):                                         # rust running down from a seam
+        x = rnd.randrange(16)
+        y = y0 + 10 * rnd.randrange(0, max(1, (y1 - y0) // 10 + 1))
+        for i in range(rnd.randrange(3, 8)):
+            if y0 <= y + i < y1:
+                g[y + i][x] = "5" if i < 3 else "6"
+    for _ in range(4):                                         # flakes
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(0, 15)
+        g[y][x] = "4"
+
+
+def _verdigris2_texture(g, y0, y1, rnd, light, mid, dark):
+    """The same plates with other streaks, so a long Golgotha wall doesn't repeat."""
+    rnd.random()
+    rnd.random()
+    _verdigris_texture(g, y0, y1, rnd, light, mid, dark)
+
+
 def _shale_texture(g, y0, y1, rnd, light, mid, dark):
     """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
     y = y0
@@ -492,10 +519,10 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
              "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture,
              "fulcrete": _fulcrete_texture, "vinefulcrete": _vinefulcrete_texture, "mudroot": _mudroot_texture, "crysteel": _crysteel_texture,
-             "starorchid": _starorchid_texture, "tubing": _tubing_texture}
+             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
 EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars",
-                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing"]
+                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants
