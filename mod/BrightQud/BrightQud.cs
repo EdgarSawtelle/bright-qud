@@ -1934,6 +1934,11 @@ namespace BrightQud
                 // Carved marble, not neon: the friezes and the dais keep their gold.
                 if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
                 else if (top != null && top.Blueprint.EndsWith("Marble Dais", StringComparison.Ordinal)) ch.Detail = DaisMarble;
+                else if (top != null && top.Blueprint == "Oolite" && !Settings.GameSprites(SpriteSets.Walls))
+                {
+                    ch.Foreground = OolitePearl;
+                    ch.Detail = OoliteShade;
+                }
                 else if (top != null && top.Blueprint == "StiltWell")
                 {
                     // The well's stone is the dais around it; its black cell background would show as a dark square.
@@ -1990,7 +1995,7 @@ namespace BrightQud
                     ch.Foreground = ZoneLiquid(lk, ch.Foreground, false);
                     ch.Detail = ZoneLiquid(lk, ch.Detail, true);
                 }
-                else if (kind == KindFamily && (zoneFamily == FamilyJungle || zoneFamily == FamilyDeepJungle) && top != null && IsPlant(top)
+                else if (kind == KindFamily && (zoneFamily == FamilyJungle || zoneFamily == FamilyDeepJungle || zoneFamily == FamilyGrove) && top != null && IsPlant(top)
                     && !Settings.GameSprites(SpriteSets.Plants))
                 {
                     // Jungle plants: deeper, darker greens ("dense, dark, wet"); trunks and fruit keep theirs.
@@ -2341,15 +2346,16 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        const int FamilyGrove = 19;   // Banana grove: rich dark soil, fallen fronds, Spindle glitter
         const int FamilyTar = 18;     // Asphalt mines: grit stained by the black blood
         const int FamilyChute = 17;   // Golgotha's trash chutes: dark rust silt and scrap
         const int FamilyRuins = 16;   // "vine-swathed works": dark mossy shale earth
@@ -2411,7 +2417,7 @@ namespace BrightQud
                     return FamilyMarsh;
             }
             if (bp.StartsWith("TerrainDesertCanyon", StringComparison.Ordinal)) return FamilyCanyon;
-            if (bp.StartsWith("TerrainBananaGrove", StringComparison.Ordinal)) return 3;
+            if (bp.StartsWith("TerrainBananaGrove", StringComparison.Ordinal)) return FamilyGrove;
             return -1;
         }
         static int zoneKind;
@@ -2653,6 +2659,7 @@ namespace BrightQud
         static readonly Color ShaleRed = Hex("743028"), ShaleShade = Hex("4c201c");
         static readonly Color SandstoneTan = Hex("b07a58"), SandstoneShade = Hex("7a5238");
         static readonly Color DogthornOlive = Hex("7a8448");
+        static readonly Color OolitePearl = Hex("b4ad9c"), OoliteShade = Hex("7c7668"); // the game's Y glares white
         // Six Day Stilt: light blue outer walls, white marble inside (the game's c/C glare neon on big areas).
         static readonly Color StiltBlue = Hex("8fbccb"), StiltBlueShade = Hex("5f8fa0");
         static readonly Color StiltMarble = Hex("e6e1d4"), StiltMarbleVein = Hex("b9b4a8");

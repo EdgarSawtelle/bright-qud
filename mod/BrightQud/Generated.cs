@@ -252,7 +252,7 @@ namespace BrightQud
             { "tiles/wall/flower-", "plant" },
             { "tiles/wall/fluted-", "ornate_fluted" },
             { "tiles/wall/granite-", "stone" },
-            { "tiles/wall/oolite-", "rock" },
+            { "tiles/wall/oolite-", "oolite" },
             { "tiles/wall/plant-", "plant" },
             { "tiles/wall/scale-", "scale" },
             { "tiles/wall/secure-", "tech" },

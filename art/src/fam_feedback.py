@@ -16,6 +16,7 @@ KEYS = {
     "creatures/sw/lagroot": "lagroot",
     "creatures/sw/elder/lagroot": "elder_lagroot",
     "items/sw/shekhinah/hologram": "shekhinah_hologram",
+    "creatures/sw/cyclops": "cyclopean_gibbon",
     "creatures/nephilim/agolgut": "agolgot",
     "creatures/nephilim/bethsaida": "bethsaida",
     "creatures/wight/agolgot": "wight_agolgot",
@@ -460,9 +461,44 @@ def dogthorn(seed):
     return rows(g)
 
 
+def cyclopean_gibbon():
+    c = C()
+    # very long thin arms flung wide: left reaching up to a branch, right trailing out (swing)
+    c.line(6, 12, 3, 9, "1"); c.line(3, 9, 1, 5, "2"); c.line(1, 5, 0, 2, "2")
+    c.line(10, 12, 12, 10, "2"); c.line(12, 10, 15, 9, "3"); c.line(15, 9, 15, 11, "3")
+    # fur fringe hanging from the arms
+    for (x, y) in ((4, 10), (2, 8), (3, 7), (1, 7), (11, 11), (13, 11), (14, 10), (2, 4)):
+        c.p(x, y, "4")
+    for (x, y) in ((3, 10), (1, 8), (12, 12), (14, 12)):
+        c.p(x, y, "5")
+    c.p(0, 1, "1")  # hooked fingers
+    # small slung torso
+    c.r(7, 12, 9, 16, "2")
+    c.r(7, 12, 8, 14, "1")
+    c.r(9, 14, 9, 16, "3")
+    c.p(6, 13, "4"); c.p(10, 14, "5"); c.p(8, 17, "5")
+    # naked skin face, high thin fur crown
+    c.r(5, 6, 11, 10, "s")
+    c.r(6, 11, 10, 11, "s")
+    c.r(7, 12, 9, 12, "S")
+    c.r(10, 7, 11, 10, "S"); c.p(5, 10, "S"); c.r(6, 11, 6, 11, "S"); c.r(9, 11, 10, 11, "S")
+    c.r(5, 4, 11, 5, "2"); c.r(6, 3, 10, 3, "3"); c.p(7, 3, "1"); c.p(8, 4, "1")
+    c.p(4, 6, "3"); c.p(4, 7, "4"); c.p(12, 6, "3"); c.p(12, 7, "5")
+    # the one great central eye
+    c.r(7, 7, 9, 9, "O")
+    c.p(6, 8, "w"); c.p(10, 8, "w")
+    c.p(7, 8, "w"); c.p(7, 7, "w")
+    c.p(8, 11, "O")  # thin slit mouth
+    # short bent legs
+    c.r(7, 17, 8, 18, "2"); c.p(6, 19, "3"); c.p(5, 20, "3"); c.p(6, 20, "3")
+    c.r(9, 17, 10, 18, "3"); c.p(11, 19, "3"); c.p(11, 20, "3"); c.p(12, 20, "3")
+    c.shadow(4, 13, 21)
+    return c.out()
+
+
 SPRITES = {
     "dogthorn1": dogthorn(1), "dogthorn2": dogthorn(2),
-    "feral_dog": feral_dog(), "dreadroot": dreadroot(), "lagroot": lagroot(),
+    "feral_dog": feral_dog(), "cyclopean_gibbon": cyclopean_gibbon(), "dreadroot": dreadroot(), "lagroot": lagroot(),
     "elder_lagroot": elder_lagroot(), "shekhinah_hologram": shekhinah_hologram(),
     "agolgot": agolgot(), "bethsaida": bethsaida(),
     "wight_agolgot": wight_agolgot(), "wight_bethsaida": wight_bethsaida(),

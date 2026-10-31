@@ -482,6 +482,21 @@ def _verdigris2_texture(g, y0, y1, rnd, light, mid, dark):
     _verdigris_texture(g, y0, y1, rnd, light, mid, dark)
 
 
+def _oolite_texture(g, y0, y1, rnd, light, mid, dark):
+    """Grove: "stony eggs are incubated in pearly planar sheets" - packed round grains in thin sheets."""
+    for y in range(y0, y1):
+        sheet = (y - y0) % 8
+        for x in range(16):
+            g[y][x] = dark if sheet == 7 else mid
+    for y in range(y0, y1 - 1, 2):
+        for x in range((y // 2) % 2, 15, 3):                   # the eggs
+            if g[y][x] == mid:
+                g[y][x] = light
+                g[y][x + 1] = light
+                if g[y + 1][x] == mid:
+                    g[y + 1][x] = dark
+
+
 def _shale_texture(g, y0, y1, rnd, light, mid, dark):
     """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
     y = y0
@@ -519,7 +534,7 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
              "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture,
              "fulcrete": _fulcrete_texture, "vinefulcrete": _vinefulcrete_texture, "mudroot": _mudroot_texture, "crysteel": _crysteel_texture,
-             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture}
+             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture, "oolite": _oolite_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
 EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars",
                         "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2"]
@@ -529,7 +544,7 @@ MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 # of each family map onto our 16 N/E/S/W variants of one material ("brightqudwall/<material>-nesw").
 ALIAS_FAMILIES = {
     "tiles/wall/wood-": "wood", "walls/wall/wood/worn-": "wood",
-    "tiles/wall/stone-": "stone", "tiles/wall/granite-": "stone", "tiles/wall/oolite-": "rock",
+    "tiles/wall/stone-": "stone", "tiles/wall/granite-": "stone", "tiles/wall/oolite-": "oolite",
     "walls/wall/brick-": "brick", "tiles/wall/plant-": "plant", "tiles/wall/flower-": "plant",
     "walls/wall/mushroom-": "shroom", "tiles/wall/crystal1-": "crystal", "tiles/wall/bone-": "bone",
     "walls/wall/skull/1-": "bone", "walls/wall/skull/2-": "bone",
