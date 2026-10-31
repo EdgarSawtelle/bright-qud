@@ -40,6 +40,8 @@ FAMILIES = {
     "basalt": ("37383c", "3b3c40", "6a6c70"),    # River Yonth: basalt chips
     "sponge": ("4a5548", "4e594c", "7a8a6a"),    # Lake Hinnom: spongebed, porous and damp
     "reef": ("1d3536", "233f40", "5f8c88"),      # Palladium Reef: dark teal, coral grit, palladium flecks (same colours as before)
+    "ward": ("3c4148", "40454c", "6e7a86"),      # Bethesda Susa wards: cold stone, dust and old tile
+    "rime": ("6f8896", "748d9b", "c6dbe2"),      # Bethesda Susa, cold strata: frost over stone
     "canyon": ("d0c6b8", "d5cbbd", "a4503c"),    # Desert canyons: chalk and salt, crimson in the cracks
 }
 
@@ -325,6 +327,30 @@ def reef(t, base, acc):
         t.put(t.rnd.randrange(16), t.rnd.randrange(24), mix(0.5))
 
 
+def ward(t, base, acc):
+    """Bethesda Susa's wards: "the angleless architecture of Bethsaida's lair" - cold stone, fine dust, faint curved scratches."""
+    t.grain(base, 26, 0.95, 1.05)
+    for _ in range(t.rnd.randrange(1, 3)):
+        x, y = t.rnd.randrange(1, 11), t.rnd.randrange(3, 20)
+        for i in range(5):
+            t.put(x + i, y + (i * i) // 8, shade(base, 1.1))
+
+
+def rime(t, base, acc):
+    """Bethesda Susa's cold strata: frost feathers grown over the stone, all close to the ground colour."""
+    mix = lambda k: tuple(round(base[i] + (acc[i] - base[i]) * k) for i in range(3)) + (255,)
+    t.grain(base, 24, 0.96, 1.04)
+    for _ in range(t.rnd.randrange(2, 4)):                 # a frost feather
+        x, y = t.rnd.randrange(2, 12), t.rnd.randrange(3, 20)
+        for i in range(4):
+            t.put(x + i, y - i // 2, mix(0.32))
+            if i % 2:
+                t.put(x + i, y - i // 2 + 1, mix(0.2))
+                t.put(x + i - 1, y - i // 2 - 1, mix(0.2))
+    for _ in range(t.rnd.randrange(3, 6)):
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), mix(0.4))
+
+
 def canyon(t, base, acc):
     """Desert canyons: "the fissure-wounds have rotted to crimson and salt" - pale chalk and salt crust cracked into
     plates, crimson stain in the cracks (seen in the fan art's rust on chalk). Cracks start and end inside the tile."""
@@ -411,7 +437,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"reef": reef, "sponge": sponge, "gravel": gravel, "basalt": gravel, "grove": grove, "tar": tar, "chute": chute, "ruins": ruins, "canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
+DRAW = {"ward": ward, "rime": rime, "reef": reef, "sponge": sponge, "gravel": gravel, "basalt": gravel, "grove": grove, "tar": tar, "chute": chute, "ruins": ruins, "canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
 
 
 def tiles(family):
