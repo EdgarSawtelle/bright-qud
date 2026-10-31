@@ -1931,6 +1931,7 @@ namespace BrightQud
                     else if (sk == 16) { ch.Foreground = TubeBrass; ch.Detail = TubeCold; }
                     else if (sk == 17) { ch.Foreground = TubeBrass; ch.Detail = TubeHot; }
                     else if (sk == 21) { ch.Foreground = GypsumGold; ch.Detail = GypsumShade; }
+                    else if (sk == 22) { ch.Foreground = CoralRag; ch.Detail = CoralRagBite; }
                 }
                 // Carved marble, not neon: the friezes and the dais keep their gold.
                 if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
@@ -2347,16 +2348,17 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove", "gravel", "basalt" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove", "gravel", "basalt", "sponge" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026"), Hex("6c6856"), Hex("37383c") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026"), Hex("6c6856"), Hex("37383c"), Hex("4a5548") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429"), Hex("706c5a"), Hex("3b3c40") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429"), Hex("706c5a"), Hex("3b3c40"), Hex("4e594c") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
         const int FamilyGravel = 20, FamilyBasalt = 21; // river banks
+        const int FamilySponge = 22;  // Lake Hinnom's shore: "coral fingers poke out from the spongebed"
         const int FamilyGrove = 19;   // Banana grove: rich dark soil, fallen fronds, Spindle glitter
         const int FamilyTar = 18;     // Asphalt mines: grit stained by the black blood
         const int FamilyChute = 17;   // Golgotha's trash chutes: dark rust silt and scrap
@@ -2416,6 +2418,8 @@ namespace BrightQud
                     return FamilyDeepJungle;  // "a high-wreath canopy chokes off the last beams of light"
                 case "TerrainAsphaltMines":
                     return FamilyTar;
+                case "TerrainLakeHinnom":
+                    return FamilySponge;
                 case "TerrainRiverSvy": case "TerrainRiverOpal": case "TerrainMountainStream":
                     return FamilyGravel;   // "she ferries crushed granite"
                 case "TerrainRiverYonth":
@@ -2684,7 +2688,7 @@ namespace BrightQud
             BuildWallTiles("concrete"), BuildWallTiles("stiltmarble"), BuildWallTiles("stiltpillar"), BuildWallTiles("ironbars"),
             BuildWallTiles("fulcrete"), BuildWallTiles("fulcrete"), BuildWallTiles("mudroot"), BuildWallTiles("crysteel"),
             BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete"),
-            BuildWallTiles("verdigris"), BuildWallTiles("verdigris2"), BuildWallTiles("gypsum") };
+            BuildWallTiles("verdigris"), BuildWallTiles("verdigris2"), BuildWallTiles("gypsum"), BuildWallTiles("coralrag") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2692,6 +2696,7 @@ namespace BrightQud
         static readonly Color ShaleRed = Hex("743028"), ShaleShade = Hex("4c201c");
         static readonly Color SandstoneTan = Hex("b07a58"), SandstoneShade = Hex("7a5238");
         static readonly Color DogthornOlive = Hex("7a8448");
+        static readonly Color CoralRag = Hex("5f9c9e"), CoralRagBite = Hex("3f6e74");
         static readonly Color GypsumGold = Hex("b89a58"), GypsumShade = Hex("7a6438");
         static readonly Color OolitePearl = Hex("b4ad9c"), OoliteShade = Hex("7c7668"); // the game's Y glares white
         // Six Day Stilt: light blue outer walls, white marble inside (the game's c/C glare neon on big areas).
@@ -2717,7 +2722,7 @@ namespace BrightQud
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
         // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
         // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence, 11 = fulcrete, 12 = ebon fulcrete, 13 = mudroot,
-        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum; 0 = no swap.
+        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum, 22 = coral rag; 0 = no swap.
         const int VineFulcrete = 18; // kind 11 in the surface ruins' tiles: "vine-swathed"
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
@@ -2727,7 +2732,8 @@ namespace BrightQud
             : blueprint.StartsWith("EbonFulcrete", StringComparison.Ordinal) ? 12 : blueprint.Contains("Fulcrete") ? 11
             : blueprint == "Mudroot" ? 13 : blueprint == "CrysteelPlatedWall" ? 14 : blueprint == "Star Orchid Marble" ? 15
             : blueprint == "MachineWallColdTubing" ? 16 : blueprint == "MachineWallHotTubing" ? 17
-            : blueprint == "Verdigris" ? 19 : blueprint == "Gypsum" ? 21 : 0;
+            : blueprint == "Verdigris" ? 19 : blueprint == "Gypsum" ? 21
+            : blueprint.EndsWith("Coral Rag", StringComparison.Ordinal) ? 22 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
