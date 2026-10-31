@@ -41,7 +41,7 @@ APPROVED_BATCHES = {"items3", "kit3a", "kit3b", "items4_7", "items4_6", "items4_
 B3_BATCHES = ["b3kit", "b3_castes", "b3_beasts", "b3_odd", "b3_deep", "b3_wilds", "b3_people"]
 # Family redraws (docs/b3_worklists/families.md) and zone sets: built last, they replace earlier
 # sprites by tile key.
-FAMILY_BATCHES = ["fam_frogs", "fam_reptiles", "fam_templars", "moonstair", "fam_feedback"]
+FAMILY_BATCHES = ["fam_frogs", "fam_reptiles", "fam_templars", "moonstair", "fam_feedback", "fam_stilt"]
 RESTYLED = set()  # names whose hand-drawn idle frame no longer matches
 
 

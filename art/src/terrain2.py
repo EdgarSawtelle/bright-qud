@@ -316,6 +316,56 @@ def _limestone_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x - 1] = light
 
 
+def _concrete_texture(g, y0, y1, rnd, light, mid, dark):
+    """Stilt: "smooth grey stone hides its bonded pebbly innards ... streaked with dirt" - poured lifts, few pebbles."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = dark if (y - y0) % 8 == 7 else mid
+    for _ in range(3):                                         # a dirt streak running down from a lift line
+        x, y = rnd.randrange(16), rnd.randrange(y0, max(y0 + 1, y1))
+        for i in range(rnd.randrange(2, 5)):
+            if y + i < y1:
+                g[y + i][x] = dark
+    for _ in range(3):                                         # a pebble showing through
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(0, 15)
+        if g[y][x] == mid:
+            g[y][x] = light
+
+
+def _stiltmarble_texture(g, y0, y1, rnd, light, mid, dark):
+    """Stilt: "ribbons of impurity ... polished along the ideal plane" - big white blocks, thin veins, wide joints."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = dark if (y - y0) % 12 == 11 else light
+    for _ in range(3):
+        x, y = rnd.randrange(0, 8), rnd.randrange(y0, max(y0 + 1, y1))
+        for i in range(rnd.randrange(5, 9)):
+            if 0 <= y < y1 and g[y][min(15, x + i)] == light:
+                g[y][min(15, x + i)] = mid
+            y += rnd.choice((0, 1, 1, -1))
+
+
+def _stiltpillar_texture(g, y0, y1, rnd, light, mid, dark):
+    """Stilt: "fluted marble column" - vertical flutes under a gold band."""
+    for y in range(y0, y1):
+        for x in range(16):
+            f = x % 4
+            g[y][x] = dark if f == 3 else (light if f in (0, 1) else mid)
+    for y in range(y0, min(y0 + 2, y1)):
+        for x in range(16):
+            g[y][x] = "y"
+
+
+def _ironbars_texture(g, y0, y1, rnd, light, mid, dark):
+    """Stilt: the iron fence - upright bars between two rails."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = light if x % 4 == 1 else (mid if x % 4 == 2 else dark)
+        if (y - y0) % 12 in (2, 3):
+            for x in range(16):
+                g[y][x] = mid
+
+
 def _shale_texture(g, y0, y1, rnd, light, mid, dark):
     """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
     y = y0
@@ -350,9 +400,10 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "plant": _plant_texture, "shroom": _shroom_texture, "crystal": _crystal_texture, "bone": _bone_texture,
              "tech": _tech_texture, "scale": _scale_texture,
              "cage": _cage_texture, "petal": _petal_texture, "marl": _marl_texture, "limestone": _limestone_texture,
-             "shale": _shale_texture, "sandstone": _sandstone_texture}
+             "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
+             "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
-EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone"]
+EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

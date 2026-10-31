@@ -1900,7 +1900,13 @@ namespace BrightQud
                     else if (sk == 4) { ch.Foreground = LimestoneGlaucous; ch.Detail = LimestoneShade; }
                     else if (sk == 5) { ch.Foreground = ShaleRed; ch.Detail = ShaleShade; }
                     else if (sk == 6) { ch.Foreground = SandstoneTan; ch.Detail = SandstoneShade; }
+                    else if (sk == 7) { ch.Foreground = StiltBlue; ch.Detail = StiltBlueShade; }
+                    else if (sk == 8 || sk == 9) { ch.Foreground = StiltMarble; ch.Detail = StiltMarbleVein; }
+                    else if (sk == 10) { ch.Foreground = IronBars; ch.Detail = IronBarsShade; }
                 }
+                // Carved marble, not neon: the friezes and the dais keep their gold.
+                if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
+                else if (top != null && top.Blueprint.EndsWith("Marble Dais", StringComparison.Ordinal)) ch.Detail = DaisMarble;
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 // Salt dunes are floor objects with a tile of their own: drawn lighter than the ground around
                 // them they read as pale squares, so they get the zone's ground tiles like any bare cell.
@@ -2563,7 +2569,8 @@ namespace BrightQud
         // pale trunks with pressed petals. Joined to same-kind N/E/S/W neighbours; computed per zone refresh.
         static string[,] wallSwap;
         static readonly string[][] SwapTiles = { null, BuildWallTiles("cage"), BuildWallTiles("petal"),
-            BuildWallTiles("marl"), BuildWallTiles("limestone"), BuildWallTiles("shale"), BuildWallTiles("sandstone") };
+            BuildWallTiles("marl"), BuildWallTiles("limestone"), BuildWallTiles("shale"), BuildWallTiles("sandstone"),
+            BuildWallTiles("concrete"), BuildWallTiles("stiltmarble"), BuildWallTiles("stiltpillar"), BuildWallTiles("ironbars") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2571,6 +2578,11 @@ namespace BrightQud
         static readonly Color ShaleRed = Hex("743028"), ShaleShade = Hex("4c201c");
         static readonly Color SandstoneTan = Hex("b07a58"), SandstoneShade = Hex("7a5238");
         static readonly Color DogthornOlive = Hex("7a8448");
+        // Six Day Stilt: light blue outer walls, white marble inside (the game's c/C glare neon on big areas).
+        static readonly Color StiltBlue = Hex("8fbccb"), StiltBlueShade = Hex("5f8fa0");
+        static readonly Color StiltMarble = Hex("e6e1d4"), StiltMarbleVein = Hex("b9b4a8");
+        static readonly Color IronBars = Hex("5c5e62"), IronBarsShade = Hex("3a3b3f");
+        static readonly Color ReliefStone = Hex("d2cdbf"), DaisMarble = Hex("a4b9c6");
 
         static string[] BuildWallTiles(string material)
         {
@@ -2581,10 +2593,13 @@ namespace BrightQud
         }
 
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
-        // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock); 0 = no swap.
+        // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
+        // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence; 0 = no swap.
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
-            : blueprint == "Marl" ? 3 : blueprint == "Limestone" ? 4 : blueprint == "Shale" ? 5 : blueprint == "Sandstone" ? 6 : 0;
+            : blueprint == "Marl" ? 3 : blueprint == "Limestone" ? 4 : blueprint == "Shale" ? 5 : blueprint == "Sandstone" ? 6
+            : blueprint == "SixDayStiltWall1" ? 7 : blueprint == "SixDayStiltWall2" ? 8
+            : blueprint.StartsWith("SixDayStiltPillarWall", StringComparison.Ordinal) ? 9 : blueprint == "IronFence" ? 10 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
