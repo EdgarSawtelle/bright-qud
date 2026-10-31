@@ -372,6 +372,12 @@ def main():
             img, mask = B.render(T2.painted_wall(mat, mask8), "terrain", fg="w", detail="c", with_mask=True)
             write(img, flat_name(k))
             write(mask, "BrightQudMask/" + flat_name(k))
+    # Palladium Reef struts: pipes that join their neighbours (see-through around them, so not painted walls).
+    import reefstruts
+    for k, rows in reefstruts.variants():
+        img, mask = B.render(rows, "terrain", fg="w", detail="c", with_mask=True)
+        write(img, flat_name(k))
+        write(mask, "BrightQudMask/" + flat_name(k))
     # Gas clouds (soft translucent puffs, 4 animation frames).
     for i in range(4):
         img, mask = FX.gas(i)
