@@ -114,16 +114,18 @@ def quills():
 
 
 def stinger():
-    """segmented tail: 3-wide chitin bulbs up the left side, slimmer arch over the head, barb on the right."""
+    """segmented tail rising up the LEFT side of the body (never over the head), tapering, then hooking
+    out to the left at ear height and ending in a bone barb that points up and away from the head."""
     c = C()
-    for i, (x, y) in enumerate([(1, 20), (1, 17), (1, 14), (1, 11), (1, 8)]):
+    for i, (x, y) in enumerate([(1, 20), (1, 17), (1, 14), (1, 11)]):
         c.r(x - 1, y - 1, x + 1, y + 1, "r" if i % 2 == 0 else "R")
         c.p(x - 1, y + 1, "e"); c.p(x, y + 1, "e") if i % 2 == 0 else None
-    for i, (x, y) in enumerate([(1, 5), (3, 3), (5, 1), (7, 0), (9, 0), (11, 1)]):
-        c.r(x, y, x + 1, y + 1, "r" if i % 2 == 0 else "R")
-    c.r(12, 2, 13, 3, "R"); c.p(12, 3, "e")          # barb base
-    c.r(13, 4, 13, 5, "w"); c.p(13, 6, "y")          # bone barb dropping
-    c.p(14, 3, "w")
+    c.r(0, 8, 1, 9, "r"); c.p(0, 10, "e")                    # tail narrows and sways outward
+    c.r(0, 6, 1, 7, "R")
+    c.r(0, 4, 1, 5, "r")
+    c.r(1, 2, 2, 3, "R")                                    # hook bends back inward at ear height
+    c.p(3, 2, "w"); c.p(3, 1, "w"); c.p(4, 0, "y")          # bone barb pointing up, clear of the head
+    c.p(2, 1, "r")
     return c.out()
 
 

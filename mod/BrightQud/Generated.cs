@@ -219,8 +219,6 @@ namespace BrightQud
             "creatures/sw/une",
             "creatures/sw/warden/goatfolk",
             "creatures/sw/zothom",
-            "creatures/wight/agolgot",
-            "creatures/wight/bethsaida",
             "creatures/wight/qas",
             "creatures/wight/qon",
             "creatures/wight/rermadon",

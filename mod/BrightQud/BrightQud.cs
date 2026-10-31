@@ -738,10 +738,10 @@ namespace BrightQud
         // doesn't repeat. Keep in sync with tools/review_hinnom.py.
         static readonly int[][][] Strands =
         {
-            new[] { new[] { 2, 4, 4 }, new[] { 10, 9, 3 }, new[] { 4, 15, 5 }, new[] { 12, 19, 1 }, new[] { 7, 1, 1 } },
-            new[] { new[] { 9, 2, 5 }, new[] { 1, 8, 3 }, new[] { 11, 14, 3 }, new[] { 3, 20, 4 }, new[] { 6, 12, 1 } },
-            new[] { new[] { 5, 6, 4 }, new[] { 12, 3, 1 }, new[] { 1, 13, 4 }, new[] { 9, 17, 5 }, new[] { 13, 11, 1 } },
-            new[] { new[] { 0, 2, 3 }, new[] { 7, 7, 5 }, new[] { 2, 18, 3 }, new[] { 10, 21, 4 }, new[] { 4, 11, 1 } },
+            new[] { new[] { 2, 4, 4 }, new[] { 10, 9, 3 }, new[] { 4, 15, 5 }, new[] { 12, 19, 1 }, new[] { 7, 1, 1 }, new[] { 6, 7, 4 }, new[] { 13, 5, 2 }, new[] { 0, 11, 3 }, new[] { 8, 13, 1 }, new[] { 9, 21, 5 } },
+            new[] { new[] { 9, 2, 5 }, new[] { 1, 8, 3 }, new[] { 11, 14, 3 }, new[] { 3, 20, 4 }, new[] { 6, 12, 1 }, new[] { 3, 5, 4 }, new[] { 12, 7, 3 }, new[] { 5, 16, 3 }, new[] { 0, 14, 1 }, new[] { 11, 20, 4 } },
+            new[] { new[] { 5, 6, 4 }, new[] { 12, 3, 1 }, new[] { 1, 13, 4 }, new[] { 9, 17, 5 }, new[] { 13, 11, 1 }, new[] { 10, 10, 3 }, new[] { 0, 3, 4 }, new[] { 7, 1, 3 }, new[] { 4, 20, 5 }, new[] { 12, 14, 2 } },
+            new[] { new[] { 0, 2, 3 }, new[] { 7, 7, 5 }, new[] { 2, 18, 3 }, new[] { 10, 21, 4 }, new[] { 4, 11, 1 }, new[] { 11, 3, 4 }, new[] { 3, 5, 1 }, new[] { 1, 13, 5 }, new[] { 10, 15, 4 }, new[] { 7, 20, 1 } },
         };
 
         static void AlgaeStrands(Color[] px, int layout)

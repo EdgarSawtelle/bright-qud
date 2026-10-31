@@ -121,24 +121,35 @@ FUR_ROWS = {
 
 
 def fur():
-    # bold pelt: broad mantle over the shoulders, fitted torso, scalloped hem; light left / dark right
+    # shaggy pelt: broad mantle with tufts breaking the outline at shoulders and hem, layered locks
+    # (shade 3 strokes on the lit side, shade 1 strokes on the dark side); light left / dark right
+    rows = {
+        7: "...........3....",
+        8: "..1112222223333.",
+        9: ".11112222222333.",
+        10: "1111122222223333",
+        11: ".11112222222333.",
+        12: "..11122222223333",
+        13: "..1112222222333.",
+        14: "...12222222233..",
+        15: "...1255555533...",
+        16: "...1222222233...",
+        17: "...1122222233...",
+        18: "..11122222233...",
+        19: "..1.12.222.33.3.",
+        20: "..1..1..2..3..3.",
+    }
     c = C()
-    c.r(5, 8, 10, 8, "2")
-    c.r(3, 9, 12, 9, "2"); c.r(2, 10, 13, 12, "2")
-    c.r(4, 13, 11, 17, "2")
-    c.r(3, 9, 5, 12, "1"); c.r(2, 10, 3, 12, "1"); c.r(4, 13, 5, 17, "1"); c.r(5, 8, 6, 8, "1")
-    c.r(10, 9, 12, 12, "3"); c.r(12, 10, 13, 12, "3"); c.r(10, 13, 11, 17, "3"); c.r(9, 8, 10, 8, "3")
-    c.p(2, 10, "."); c.p(13, 10, ".")
-    for x in (3, 6, 9, 12):                       # mantle edge scallops
-        c.p(x, 13, "1" if x < 8 else "3") if x in (3, 12) else None
-    c.p(3, 13, "1"); c.p(12, 13, "3")
-    c.r(5, 15, 10, 15, "5")                       # belt
-    for x0 in (3, 6, 9):                          # hem scallops, 2 wide, regular
-        pass
-    c.r(4, 18, 11, 18, "2"); c.r(4, 18, 5, 18, "1"); c.r(10, 18, 11, 18, "3")
-    for x in (4, 7, 10):
-        c.r(x, 19, x + 1, 19, "1" if x < 7 else ("2" if x < 10 else "3"))
-    c.p(4, 20, "1"); c.p(11, 20, "3")
+    for y, r in rows.items():
+        for x, ch in enumerate(r):
+            if ch != ".":
+                c.p(x, y, ch)
+    # layered fur locks: a few long strokes (dark on the lit side, light on the dark side)
+    for (x0, y0, x1, y1) in ((3, 10, 4, 12), (5, 13, 5, 16), (6, 16, 6, 18)):
+        c.line(x0, y0, x1, y1, "3")
+    for (x0, y0, x1, y1) in ((12, 9, 11, 11), (10, 13, 10, 15), (9, 16, 9, 18)):
+        c.line(x0, y0, x1, y1, "1")
+    c.line(7, 9, 7, 11, "3"); c.line(8, 12, 8, 14, "1")
     return fin(c)
 
 
