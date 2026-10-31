@@ -322,7 +322,8 @@ namespace BrightQud
             string key = Key(tile);
             // Our terrain, or a vanilla liquid (primordial soup pools are vanilla Gunk tiles).
             string underKey = under != null ? Key(under) : null;
-            if (underKey != null && !IsOurs(underKey) && !underKey.StartsWith("liquids/", StringComparison.Ordinal))
+            if (underKey != null && !IsOurs(underKey) && !underKey.StartsWith("liquids/", StringComparison.Ordinal)
+                && !underKey.StartsWith(Ground.PatternedFloor, StringComparison.Ordinal))
                 underKey = null;
             bool underGameArt = underKey != null && Settings.GameSprites(SpriteSets.Liquids);
             if (tile.StartsWith(Doll.Prefix, StringComparison.Ordinal))
@@ -1820,6 +1821,7 @@ namespace BrightQud
         // cell, so a swimmer would otherwise sit on a flat colored square instead of the water.
         // The creature drawn in the cell being set (paper doll for human NPCs), null otherwise.
         public static XRL.World.GameObject DollTarget;
+        public const string PatternedFloor = "terrain/sw/cathedral";
 
         public static void Apply(ConsoleChar ch, RenderEvent e, bool memory, out string under, out Color underColor,
             out Color underDetail, out int style, out int mutations, out int frame, out bool isPlayer, out int hud)
@@ -1907,6 +1909,12 @@ namespace BrightQud
                 // Carved marble, not neon: the friezes and the dais keep their gold.
                 if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
                 else if (top != null && top.Blueprint.EndsWith("Marble Dais", StringComparison.Ordinal)) ch.Detail = DaisMarble;
+                else if (top != null && top.Blueprint == "StiltWell")
+                {
+                    // The well's stone is the dais around it; its black cell background would show as a dark square.
+                    ch.Detail = DaisMarble;
+                    ch.Background = QudColor.ColorMap['k'];
+                }
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 // Salt dunes are floor objects with a tile of their own: drawn lighter than the ground around
                 // them they read as pale squares, so they get the zone's ground tiles like any bare cell.
@@ -2044,6 +2052,14 @@ namespace BrightQud
                 return;
             }
             if (!Settings.Ground) return;
+            // The Stilt's patterned floor under whatever stands on it: the game shows one object per cell, so
+            // people and braziers stood on a plain square. Same colours as the floor's own cells.
+            if (e.Tile != null && cell.PaintTile != null && e.Tile != cell.PaintTile && Recolor.RawKey(cell.PaintTile).StartsWith(PatternedFloor, StringComparison.Ordinal))
+            {
+                under = cell.PaintTile;
+                underColor = Scale(zoneGround, 1.14f);
+                underDetail = Scale(zoneGround, 0.86f);
+            }
             // Keep backgrounds an object asks for explicitly (anything but the default black 'k'); a trickle
             // leaves most of the cell dry, so it shows the ground instead of the liquid's tint.
             if (!IsDefault(ch.Background) && !trickle) return;

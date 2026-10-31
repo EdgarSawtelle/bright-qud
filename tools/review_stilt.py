@@ -51,6 +51,15 @@ def calm(t, target):
 
 
 def post(name, t):
+    if name == "StiltWell":                                # detail comes from DaisMarble at runtime
+        t = t.copy()
+        px = t.load()
+        for y in range(t.height):
+            for x in range(t.width):
+                r, g, b, al = px[x, y]
+                if al > 200 and r < 90 and abs(g - b) < 30:          # the k detail role
+                    px[x, y] = (0xa4, 0xb9, 0xc6, al)
+        return t
     for k, target in CYAN.items():
         if k in name:
             return calm(t, target)

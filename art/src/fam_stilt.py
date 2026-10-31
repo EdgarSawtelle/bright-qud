@@ -16,7 +16,7 @@ KEYS = {
     "terrain/sw/statue4": ("statue_shekhinah", "object"),
     "terrain/sw/statue5": ("statue_athlete", "object"),
     "terrain/sw/statue6": ("statue_resheph", "object"),
-    "items/sw/well": ("sacred_well", "object"),
+    "items/sw/well": ("sacred_well", "terrain"),
 }
 for _k in ("n", "ne", "nw", "e", "w", "se", "sw", "south1", "south2",
            "east1", "east2", "east3", "west1", "west2", "west3"):
@@ -245,42 +245,30 @@ def statue_resheph():
 
 # ---------------------------------------------------------------- well
 def sacred_well():
-    c = C()
-    cx, cy = 7.5, 11.0
-
-    def disc(dy, r, ch):
-        c.ell(cx, cy + dy, r, r, ch)
-
-    disc(2.2, 7.95, "6")                                    # skirt (front wall)
-    disc(0.0, 7.95, "5")                                    # black marble rim
-    disc(0.0, 7.0, "4")
-    disc(0.0, 6.7, "5")
-    # gold sunken-relief band, alternating blocks
+    """Sacred well in the white cathedral: the dais marble runs edge to edge (detail roles), so the fount sits in the
+    platform; a gold relief rim and a white lip round a deep blue shaft. Fixed blues: the game's colours would be black."""
+    rows = []
     for y in range(24):
+        r = ""
         for x in range(16):
-            d = math.hypot(x - cx, y - cy)
-            if 4.5 <= d <= 6.4:
-                a = math.atan2(y - cy, x - cx)
-                seg = int((a + math.pi) / (2 * math.pi) * 16) % 4
-                c.p(x, y, ("1", "2", "2", "3")[seg] if d > 5.0 or seg == 1 else "3")
-    # lip step inside the relief
-    for y in range(24):
-        for x in range(16):
-            d = math.hypot(x - cx, y - cy)
-            if 3.4 < d < 4.5:
-                c.p(x, y, "6" if y > cy else "5")
-    disc(0.0, 3.4, "O")
-    # bright veins spike over the rim and fade into the depth
-    for x, y in [(7, 3), (8, 4), (3, 5), (12, 5), (2, 9), (13, 10), (4, 16), (11, 16), (7, 18), (8, 18), (1, 13), (14, 7)]:
-        c.p(x, y, "1")
-    for x, y in [(8, 6), (10, 8), (6, 9), (5, 13)]:
-        c.p(x, y, "6")
-    # deep gleam inside
-    c.p(7, 9, "5")
-    c.shadow(2, 13, 23)
-    return c.out()
+            d = math.hypot((x - 7.5) / 7.4, (y - 11.5) / 10.6)
+            if d > 1.0:
+                c = "4"
+            elif d > 0.84:
+                c = "1" if (x + y) % 4 else "3"                    # gold relief band
+            elif d > 0.72:
+                c = "w"                                            # white marble lip
+            elif d > 0.46:
+                c = "b"
+            else:
+                c = "d"                                            # the shaft recedes
+            r += c
+        rows.append(r)
+    rows[8] = rows[8][:5] + "B" + rows[8][6:]                      # a glint on the water
+    rows[9] = rows[9][:4] + "BB" + rows[9][6:]
+    return rows
 
-# ---------------------------------------------------------------- dais
+
 def _hash(name):
     h = 0
     for ch in name:
