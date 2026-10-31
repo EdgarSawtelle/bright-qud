@@ -2383,9 +2383,16 @@ namespace BrightQud
             return t;
         }
 
+        // World map squares carry a suffix ("TerrainRiverSvy WE", "TerrainLakeHinnom 1i").
+        static string BaseTerrain(string bp)
+        {
+            int space = bp.IndexOf(' ');
+            return space < 0 ? bp : bp.Substring(0, space);
+        }
+
         static int FamilyOf(string bp)
         {
-            switch (bp)
+            switch (BaseTerrain(bp))
             {
                 case "TerrainSixDayStilt":
                     return 0;
@@ -2440,7 +2447,7 @@ namespace BrightQud
 
         static Color RiverWater(string bp)
         {
-            switch (bp)
+            switch (BaseTerrain(bp))
             {
                 case "TerrainRiverSvy": return Hex("3f7f8c");
                 case "TerrainRiverOpal": return Hex("4a93ae");
