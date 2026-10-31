@@ -681,11 +681,12 @@ namespace BrightQud
         // hud bits: 1 hostile ring, 2 ally ring, 4-28 health bucket, 32 item sparkle, 64 player ring,
         // 128 low-health pulse (player ring turns red), 256 talk bubble, 512 interact marker,
         // 1024 faded talk bubble (already talked to), 2048 flames (burning), 4096 flame flicker frame,
-        // 8192 algae on water (bits 14-15: which layout).
+        // 8192 algae on water (bits 14-15: which layout), 65536 sheen on asphalt (same layouts).
         static void DrawHud(Color[] px, int hud)
         {
             int ring = hud & 3, health = (hud >> 2) & 7;
             if ((hud & 8192) != 0) AlgaeStrands(px, (hud >> 14) & 3);
+            if ((hud & 65536) != 0) Sheen(px, (hud >> 14) & 3);
             if ((hud & 2048) != 0) Flames(px, (hud & 4096) != 0);
             if ((hud & 256) != 0)
             {
@@ -757,16 +758,34 @@ namespace BrightQud
                 }
         }
 
-        // Flame tongues on both sides and above, only where the object itself doesn't cover them.
+        // Dull blue-green lines on asphalt, like the light on real bitumen.
+        static void Sheen(Color[] px, int layout)
+        {
+            Color c = HexColor("33474a");
+            for (int n = 0; n < 4; n++)
+            {
+                int[] s = Strands[layout][n];
+                for (int i = 0; i < s[2]; i++)
+                {
+                    int row = s[1] + (i / 2) % 2, x = s[0] + i;
+                    int p = (23 - row) * 16 + x;
+                    if (x < 16 && row < 24 && px[p].a > 0.9f) px[p] = c;
+                }
+            }
+        }
+
+        // Flame tongues on both sides and above, only where the object itself doesn't cover them; a tile that fills
+        // its cell (burning asphalt) has no such room, so there they go on top.
         static readonly string[] Flame = { "...y..", "..yy..", ".yoy..", ".yooy.", "yooory", "yoorr.", "oorrr.", ".rrr.." };
         static void Flames(Color[] px, bool alt)
         {
-            FlameAt(px, 0, alt ? 8 : 11);
-            FlameAt(px, 10, alt ? 11 : 7);
-            FlameAt(px, 5, alt ? 1 : 0);
+            bool filled = px[0].a > 0.9f && px[15].a > 0.9f && px[23 * 16].a > 0.9f && px[23 * 16 + 15].a > 0.9f;
+            FlameAt(px, 0, alt ? 8 : 11, filled);
+            FlameAt(px, 10, alt ? 11 : 7, filled);
+            FlameAt(px, 5, alt ? 1 : 0, filled);
         }
 
-        static void FlameAt(Color[] px, int x0, int row0)
+        static void FlameAt(Color[] px, int x0, int row0, bool over)
         {
             Color y = new Color(1f, 0.92f, 0.35f, 1f), o = new Color(1f, 0.55f, 0.12f, 1f),
                 r = new Color(0.85f, 0.18f, 0.1f, 1f);
@@ -777,7 +796,7 @@ namespace BrightQud
                     int tx = x0 + x, ty = row0 + rr;
                     if (ch == '.' || tx < 0 || tx >= 16 || ty < 0 || ty >= 24) continue;
                     int i = (23 - ty) * 16 + tx;
-                    if (px[i].a < 0.6f) px[i] = ch == 'y' ? y : ch == 'o' ? o : r;
+                    if (over || px[i].a < 0.6f) px[i] = ch == 'y' ? y : ch == 'o' ? o : r;
                 }
         }
 
@@ -2021,8 +2040,11 @@ namespace BrightQud
                 && !cell.ParentZone.IsWorldMap() && !gameLiquids)
             {
                 ch._Tile = LiquidTile(liquid, liquidTile, out trickle);
-                if (!trickle && LiquidKind(ZoneKind(cell), liquid) == KindReef && liquid.LiquidVolume.ComponentLiquids.ContainsKey("algae"))
+                int lk = LiquidKind(ZoneKind(cell), liquid);
+                if (!trickle && lk == KindReef && liquid.LiquidVolume.ComponentLiquids.ContainsKey("algae"))
                     hud |= 8192 | Hash(cell.X, cell.Y) % 4 << 14;
+                else if (!trickle && lk == KindAsphalt)
+                    hud |= 65536 | Hash(cell.X, cell.Y) % 4 << 14;
                 if (!memory) SeenLiquid(cell.ParentZone, liquid, ch.Foreground, ch.Detail);
             }
             if (liquidTile != null && e.Tile != null && e.Tile != liquidTile)
@@ -2313,21 +2335,22 @@ namespace BrightQud
         static readonly Color MarbleStone = Hex("221e30");
         static readonly Color MarbleVein = Hex("8c86b8");
 
-        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5, KindFamily = 6;
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5, KindFamily = 6, KindAsphalt = 7;
 
         // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        const int FamilyTar = 18;     // Asphalt mines: grit stained by the black blood
         const int FamilyChute = 17;   // Golgotha's trash chutes: dark rust silt and scrap
         const int FamilyRuins = 16;   // "vine-swathed works": dark mossy shale earth
         const int FamilyCanyon = 15;  // "rotted to crimson and salt": white chalk, crimson in the cracks
@@ -2376,6 +2399,8 @@ namespace BrightQud
                     return 11;   // meadow: salted pale green-grey with prismatic filaments
                 case "TerrainDeepJungle":
                     return FamilyDeepJungle;  // "a high-wreath canopy chokes off the last beams of light"
+                case "TerrainAsphaltMines":
+                    return FamilyTar;
                 case "TerrainGolgotha":
                     return FamilyJungle;  // "shrouded in the rotting jungle"
                 case "TerrainOmonporch":
@@ -2409,6 +2434,11 @@ namespace BrightQud
                     {
                         // Red Rock: red-brown rubble; Rust Wells: bitumen; Grit Gate: carbon-black teal
                         zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : bp == "TerrainRustWell" ? FamilyRustCave : 4;
+                        return KindFamily;
+                    }
+                    if (bp == "TerrainAsphaltMines" && zone.Z <= 29) // below it, lava instead of asphalt
+                    {
+                        zoneFamily = FamilyTar;
                         return KindFamily;
                     }
                     if (bp == "TerrainGolgotha" && zone.Z <= 14)
@@ -2579,7 +2609,7 @@ namespace BrightQud
             for (int i = 0; i < n; i++) t[i] = prefix + i;
             return t;
         }
-        static readonly Color ReefWater = Hex("3a8fb4"), Algae = Hex("3fae3a");
+        static readonly Color ReefWater = Hex("3a8fb4"), Algae = Hex("3fae3a"), Asphalt = Hex("1f1f24");
         static readonly Color SoupTeal = Hex("2f6e66"), LavaLight = Hex("d8843c");
         static readonly Color VerdigrisMetal = Hex("6f8c80"), VerdigrisPatina = Hex("a4502b"); // patina: the rust running down it
 
@@ -2739,12 +2769,14 @@ namespace BrightQud
         {
             if (kind == KindFungal) return kind;
             var lv = liquid?.LiquidVolume;
+            if (lv != null && lv.GetPrimaryLiquidID() == "asphalt") return KindAsphalt; // the game's K is a teal
             return lv != null && lv.ComponentLiquids.ContainsKey("algae") ? KindReef : kind;
         }
 
         // Liquids in zones with their own look.
         static Color ZoneLiquid(int kind, Color c, bool detail)
         {
+            if (kind == KindAsphalt) return Asphalt;
             if (kind == KindReef)
             {
                 Color.RGBToHSV(c, out float h, out float _, out float _);
