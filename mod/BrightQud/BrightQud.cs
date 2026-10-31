@@ -1930,6 +1930,7 @@ namespace BrightQud
                     else if (sk == 15) { ch.Foreground = StarOrchidRibbon; ch.Detail = StarOrchidStone; }
                     else if (sk == 16) { ch.Foreground = TubeBrass; ch.Detail = TubeCold; }
                     else if (sk == 17) { ch.Foreground = TubeBrass; ch.Detail = TubeHot; }
+                    else if (sk == 21) { ch.Foreground = GypsumGold; ch.Detail = GypsumShade; }
                 }
                 // Carved marble, not neon: the friezes and the dais keep their gold.
                 if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
@@ -2340,21 +2341,22 @@ namespace BrightQud
         static readonly Color MarbleStone = Hex("221e30");
         static readonly Color MarbleVein = Hex("8c86b8");
 
-        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5, KindFamily = 6, KindAsphalt = 7;
+        const int KindPlain = 0, KindMoon = 1, KindFungal = 2, KindSalt = 3, KindReef = 4, KindJoppa = 5, KindFamily = 6, KindAsphalt = 7, KindRiver = 8;
 
         // Ground families (docs/ZONE_STUDY_ALL.md): each has a calm ground colour and 16 textured tiles
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove", "gravel", "basalt" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026"), Hex("6c6856"), Hex("37383c") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429"), Hex("706c5a"), Hex("3b3c40") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        const int FamilyGravel = 20, FamilyBasalt = 21; // river banks
         const int FamilyGrove = 19;   // Banana grove: rich dark soil, fallen fronds, Spindle glitter
         const int FamilyTar = 18;     // Asphalt mines: grit stained by the black blood
         const int FamilyChute = 17;   // Golgotha's trash chutes: dark rust silt and scrap
@@ -2407,6 +2409,12 @@ namespace BrightQud
                     return FamilyDeepJungle;  // "a high-wreath canopy chokes off the last beams of light"
                 case "TerrainAsphaltMines":
                     return FamilyTar;
+                case "TerrainRiverSvy": case "TerrainRiverOpal": case "TerrainMountainStream":
+                    return FamilyGravel;   // "she ferries crushed granite"
+                case "TerrainRiverYonth":
+                    return FamilyBasalt;   // "fish-things feed on her basalt chips"
+                case "TerrainOpalDuskwaters":
+                    return FamilyJungle;   // "the umbrage of the boughs"
                 case "TerrainGolgotha":
                     return FamilyJungle;  // "shrouded in the rotting jungle"
                 case "TerrainOmonporch":
@@ -2427,12 +2435,30 @@ namespace BrightQud
         static readonly Color MossWarm = Hex("4a2e1a"); // a few lava-lit patches
 
         // Surface zones with their own look: the Moon Stair and the Rainbow Wood.
+        // Each river's own water, from its world map text (a clear colour means not a river).
+        static Color riverWater;
+
+        static Color RiverWater(string bp)
+        {
+            switch (bp)
+            {
+                case "TerrainRiverSvy": return Hex("3f7f8c");
+                case "TerrainRiverOpal": return Hex("4a93ae");
+                case "TerrainOpalDuskwaters": return Hex("26444f");
+                case "TerrainRiverYonth": return Hex("33687c");
+                case "TerrainMountainStream": return Hex("6fa8b4");
+            }
+            return Color.clear;
+        }
+
         static int KindOf(Zone zone)
         {
+            riverWater = Color.clear;
             if (zone.IsWorldMap() || zone.Z < 10) return KindPlain;
             try
             {
                 string bp = zone.GetTerrainObject()?.Blueprint;
+                if (zone.Z == 10 && bp != null) riverWater = RiverWater(bp);
                 if (zone.Z > 10)
                 {
                     // Underground: Red Rock's four strata get their red-brown rubble floor.
@@ -2651,7 +2677,7 @@ namespace BrightQud
             BuildWallTiles("concrete"), BuildWallTiles("stiltmarble"), BuildWallTiles("stiltpillar"), BuildWallTiles("ironbars"),
             BuildWallTiles("fulcrete"), BuildWallTiles("fulcrete"), BuildWallTiles("mudroot"), BuildWallTiles("crysteel"),
             BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete"),
-            BuildWallTiles("verdigris"), BuildWallTiles("verdigris2") };
+            BuildWallTiles("verdigris"), BuildWallTiles("verdigris2"), BuildWallTiles("gypsum") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2659,6 +2685,7 @@ namespace BrightQud
         static readonly Color ShaleRed = Hex("743028"), ShaleShade = Hex("4c201c");
         static readonly Color SandstoneTan = Hex("b07a58"), SandstoneShade = Hex("7a5238");
         static readonly Color DogthornOlive = Hex("7a8448");
+        static readonly Color GypsumGold = Hex("b89a58"), GypsumShade = Hex("7a6438");
         static readonly Color OolitePearl = Hex("b4ad9c"), OoliteShade = Hex("7c7668"); // the game's Y glares white
         // Six Day Stilt: light blue outer walls, white marble inside (the game's c/C glare neon on big areas).
         static readonly Color StiltBlue = Hex("8fbccb"), StiltBlueShade = Hex("5f8fa0");
@@ -2683,7 +2710,7 @@ namespace BrightQud
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
         // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
         // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence, 11 = fulcrete, 12 = ebon fulcrete, 13 = mudroot,
-        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris; 0 = no swap.
+        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum; 0 = no swap.
         const int VineFulcrete = 18; // kind 11 in the surface ruins' tiles: "vine-swathed"
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
@@ -2693,7 +2720,7 @@ namespace BrightQud
             : blueprint.StartsWith("EbonFulcrete", StringComparison.Ordinal) ? 12 : blueprint.Contains("Fulcrete") ? 11
             : blueprint == "Mudroot" ? 13 : blueprint == "CrysteelPlatedWall" ? 14 : blueprint == "Star Orchid Marble" ? 15
             : blueprint == "MachineWallColdTubing" ? 16 : blueprint == "MachineWallHotTubing" ? 17
-            : blueprint == "Verdigris" ? 19 : 0;
+            : blueprint == "Verdigris" ? 19 : blueprint == "Gypsum" ? 21 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {
@@ -2777,6 +2804,7 @@ namespace BrightQud
             if (kind == KindFungal) return kind;
             var lv = liquid?.LiquidVolume;
             if (lv != null && lv.GetPrimaryLiquidID() == "asphalt") return KindAsphalt; // the game's K is a teal
+            if (lv != null && riverWater.a > 0f && lv.GetPrimaryLiquidID() == "water" && !lv.ComponentLiquids.ContainsKey("algae")) return KindRiver;
             return lv != null && lv.ComponentLiquids.ContainsKey("algae") ? KindReef : kind;
         }
 
@@ -2784,6 +2812,7 @@ namespace BrightQud
         static Color ZoneLiquid(int kind, Color c, bool detail)
         {
             if (kind == KindAsphalt) return Asphalt;
+            if (kind == KindRiver) return riverWater;
             if (kind == KindReef)
             {
                 Color.RGBToHSV(c, out float h, out float _, out float _);
