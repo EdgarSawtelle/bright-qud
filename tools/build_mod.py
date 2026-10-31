@@ -41,7 +41,7 @@ APPROVED_BATCHES = {"items3", "kit3a", "kit3b", "items4_7", "items4_6", "items4_
 B3_BATCHES = ["b3kit", "b3_castes", "b3_beasts", "b3_odd", "b3_deep", "b3_wilds", "b3_people"]
 # Family redraws (docs/b3_worklists/families.md) and zone sets: built last, they replace earlier
 # sprites by tile key.
-FAMILY_BATCHES = ["fam_frogs", "fam_reptiles", "fam_templars", "moonstair"]
+FAMILY_BATCHES = ["fam_frogs", "fam_reptiles", "fam_templars", "moonstair", "fam_feedback"]
 RESTYLED = set()  # names whose hand-drawn idle frame no longer matches
 
 
@@ -398,6 +398,13 @@ def write_options(looks):
   <option ID="OptionBrightQudAnimation" DisplayText="Bright Qud: creature animation (bobbing, flapping wings)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (twinkles, glows, torch flicker; off by default)" Category="Mods" Type="Checkbox" Default="No"></option>
   <option ID="OptionBrightQudAutoStyle" DisplayText="Bright Qud: restyle tiles that aren't redrawn yet" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesCreatures" DisplayText="Bright Qud: new creature sprites (off = the game's sprites, with the outline)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesPlants" DisplayText="Bright Qud: new plant and tree sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesItems" DisplayText="Bright Qud: new item sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesFurniture" DisplayText="Bright Qud: new furniture and statue sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesWalls" DisplayText="Bright Qud: new wall sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesLiquids" DisplayText="Bright Qud: new liquid sprites and zone liquid colours (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudShowMutations" DisplayText="Bright Qud: show mutations on characters (wings, horns, extra arms...)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudGround" DisplayText="Bright Qud: colored ground instead of black" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudThreatRings" DisplayText="Bright Qud: red/green rings under enemies/allies" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudHealthBars" DisplayText="Bright Qud: health bars over hurt creatures" Category="Mods" Type="Checkbox" Default="Yes"></option>
@@ -410,7 +417,7 @@ def write_options(looks):
   <option ID="OptionBrightQudFireOverlay" DisplayText="Bright Qud: draw flames on burning things (instead of a flashing square)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudEffectGround" DisplayText="Bright Qud: ground instead of black squares behind effect tiles" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudDangerTint" DisplayText="Bright Qud: world map tints regions too dangerous for your level (orange/red)" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudLookStats" DisplayText="Bright Qud: key stats at the top of look / hover descriptions" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudLookStatsMode" DisplayText="Bright Qud: key stats on look / hover (With scanning = creature stats need bio, tech or structure scanning)" Category="Mods" Type="Combo" Values="With scanning,Always,Off" Default="With scanning"></option>
   <option ID="OptionBrightQudQuestBanner" DisplayText="Bright Qud: quest banner (follow a quest from the Quests list: LT + left stick click)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudExplainPowers" DisplayText="Bright Qud: explain mutations and skills when looking" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudFont" DisplayText="Bright Qud: text font (Clear mono = detailed and aligned, Readable = easiest to read)" Category="Mods" Type="Combo" Values="Game default,Clear mono,Readable" Default="Clear mono"></option>
@@ -490,11 +497,45 @@ namespace BrightQud
         fh.write(src)
 
 
+def prefix_group(k):
+    """Same rules as SpriteSets.GroupOf in BrightQud.cs."""
+    for pre, g in (("liquids/", 6), ("creatures/", 1), ("items/", 3), ("furniture/", 4), ("walls", 5)):
+        if k.startswith(pre):
+            return g
+    return 5 if re.search(r"-[^-]{8}$", k) else 0
+
+
+PLANT_BASES = {"BasePlant", "Plant", "Tree", "Bush", "BaseTree", "MutatedFlower", "MutatedBush", "Grass", "Vine"}
+
+
+def sprite_groups(built):
+    """Shipped tile key -> sprite set, for the keys the folder gets wrong."""
+    bp = Blueprints()
+    add_random_tiles(bp)
+    out = {}
+    for name, o in bp.objs.items():
+        chain, n = set(), name
+        while n in bp.objs and n not in chain:
+            chain.add(n)
+            n = bp.objs[n]["inh"]
+        group = (2 if chain & PLANT_BASES else 1 if "Creature" in chain else 5 if "Wall" in chain
+                 else 4 if "Furniture" in chain or "Statue" in chain else 3 if "Item" in chain else 0)
+        if not group:
+            continue
+        for t in tiles_of(bp, name):
+            k = key(t)
+            if k in built and not k.startswith("brightqud") and prefix_group(k) != group:
+                # a tile used by several kinds of object: the first plant or creature wins
+                out.setdefault(k, group)
+    return out
+
+
 def write_generated(built):
     v = B.VARIANTS[B.CHOSEN]
     pal = {k: B.adjust(P.rgb(h), v["sat"], v["light"]) for k, h in P.PALETTE.items()}
     hx = lambda rgb: "%02x%02x%02x" % rgb
     humanoid = sorted(k for k in HUMANOID if k in built)
+    groups = "\n".join(f'            {{ "{k}", {g} }},' for k, g in sorted(sprite_groups(set(built)).items()))
     muts = "\n".join(f'            {{ "{n}", {"true" if layer == "back" else "false"} }},'
                      for n, (layer, _) in K.MUTATIONS.items())
     tints = "\n".join(f'            {{ "{n}", new[] {{ "{hx(pal[a])}", "{hx(pal[b])}" }} }},'
@@ -525,6 +566,13 @@ namespace BrightQud
         public static readonly Dictionary<string, string> WallAliases = new Dictionary<string, string>
         {{
 {aliases}
+        }};
+
+        // Sprite set of the tiles whose folder doesn't tell (SpriteSets.GroupOf): 1 creatures, 2 plants, 3 items,
+        // 4 furniture, 5 walls, 6 liquids.
+        public static readonly Dictionary<string, int> SpriteGroups = new Dictionary<string, int>
+        {{
+{groups}
         }};
 
         // Skin colors in our tiles ('s' light, 'S' shadow) and their replacements per mutation.

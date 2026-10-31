@@ -34,4 +34,13 @@ def gas(frame):
             shade = 0 if light else 1
             px[x, y] = (200, 200, 200, round(a * 255))
             mpx[x, y] = (100, shade * 127, 0, 255)
+    # Glints in the gas's secondary colour (detail role), near the heart of a puff; the same as the puff's
+    # colour for gases that have none. They drift with the frame.
+    for i, (cx, cy, r) in enumerate(puffs):
+        gx = int(cx + 1.2 * math.sin(t + i) + (1 if i % 2 else -1))
+        gy = int(cy + 0.8 * math.cos(t + i * 1.7) + (1 if i % 3 else -1))
+        for (dx, dy) in ((0, 0), (1, 0)) if i % 2 else ((0, 0), (0, 1)):
+            if 0 <= gx + dx < 16 and 0 <= gy + dy < 24:
+                px[gx + dx, gy + dy] = (200, 200, 200, 190)
+                mpx[gx + dx, gy + dy] = (200, 0, 0, 255)
     return img, mask

@@ -60,7 +60,7 @@ namespace BrightQud
                 string t = gameTile.ToLowerInvariant();
                 ok = o.GetSpecies() == "human" && o.Body != null
                     && (o.Body.Anatomy ?? "").StartsWith("Humanoid", StringComparison.Ordinal)
-                    && !t.Contains("npc-") && !t.Contains("wight");
+                    && IsGenericTile(t);
                 Eligible[bk] = ok;
             }
             if (!ok) return null;
@@ -79,6 +79,18 @@ namespace BrightQud
             if (Npcs.Count > 400) Npcs.Clear();
             if (o.ID != null) Npcs[o.ID] = new KeyValuePair<int, string>(now, d);
             return d;
+        }
+
+        // Only plain people: a seeker of the Sightless Way, a templar or a mechanimist is told apart by their
+        // own sprite, and holding a sword must not turn them into a generic human.
+        static readonly string[] GenericTiles = { "farmer", "merchant", "hermit", "stranger", "rancher", "rummager", "raider", "alchemist", "caste", "convert" };
+
+        static bool IsGenericTile(string tile)
+        {
+            if (tile.Contains("cherub") || tile.Contains("npc-")) return false;
+            foreach (string g in GenericTiles)
+                if (tile.Contains(g)) return true;
+            return false;
         }
 
         struct Layer
@@ -166,7 +178,7 @@ namespace BrightQud
             // colours, wings/fur in the character's own colours; horns, beak and claws are drawn as bone/gold.
             int pal = Stable(player.ID) % DollTable.Chitin.Length;
             Color shell = Hex(DollTable.Chitin[pal][0]), legs = Hex(DollTable.Chitin[pal][1]);
-            foreach (var kv in DollTable.Mutations)
+            if (Settings.ShowMutations) foreach (var kv in DollTable.Mutations)
             {
                 if (!player.HasPart(kv.Key)) continue;
                 Layer l = new Layer { Key = kv.Value, Fg = selfFg, Detail = selfDet };

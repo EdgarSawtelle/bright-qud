@@ -76,6 +76,8 @@ namespace BrightQud
             public int Hud;         // map HUD: bits 0-1 ring (1 hostile, 2 ally), bits 2-4 health bucket,
                                     // bit 5 item sparkle
             public string Doll;     // paper doll description (Doll.cs): the layers stacked instead of Key
+            public bool GameArt;    // this sprite set is switched off: the game's own pixels for Key
+            public bool UnderGameArt; // same for UnderKey
         }
 
         // Visible mutations: overlay parts first, then skin tints (see Generated.cs).
@@ -93,6 +95,7 @@ namespace BrightQud
         public const int StyleObject = 1; // creatures, items, furniture: ink outline + drop shadow
         public const int StyleTall = 2;   // walk-through but blocks sight (trees...): outline only
         public const int StyleFlat = 3;   // floors, walls, liquids: colors only
+        public const int StylePlain = 4;  // the game's own sprite, drawn as it is
         public const int StyleProjectile = 9; // our tile in flight: no ground/drop shadow (it spins)
 
         static readonly object Lock = new object();
@@ -105,8 +108,10 @@ namespace BrightQud
         static readonly Dictionary<string, exTextureInfo> Built = new Dictionary<string, exTextureInfo>();
         static int destroyedCount;
 
+        public static string Key(string path) => WallAlias(RawKey(path));
+
         // Same normalisation as SpriteManager.GetKey (which uses a shared, non thread-safe buffer).
-        public static string Key(string path)
+        public static string RawKey(string path)
         {
             var chars = new char[path.Length];
             int n = 0;
@@ -117,7 +122,7 @@ namespace BrightQud
             }
             var key = new string(chars, 0, n);
             const string prefix = "assets/content/textures/";
-            return WallAlias(key.StartsWith(prefix, StringComparison.Ordinal) ? key.Substring(prefix.Length) : key);
+            return key.StartsWith(prefix, StringComparison.Ordinal) ? key.Substring(prefix.Length) : key;
         }
 
         // Painted wall families we draw with one material: the game's 8-direction mask
@@ -203,6 +208,40 @@ namespace BrightQud
 
         public static bool Exists(string key) => IsOurs(key);
 
+        // A sprite set was switched on or off: every cell has to be worked out again.
+        public static void ForgetResolved()
+        {
+            lock (Lock) Resolved.Clear();
+        }
+
+        // Our PNG replaced the game's tile under the same key, but the game's list of its own tiles still
+        // names the original resource, so it can be loaded without shipping any of the game's art.
+        // UI thread only (callers hold Lock).
+        static Dictionary<string, string> gamePaths;
+        static readonly Dictionary<string, exTextureInfo> Originals = new Dictionary<string, exTextureInfo>();
+
+        static exTextureInfo Original(string key)
+        {
+            if (Originals.TryGetValue(key, out exTextureInfo info) && info != null && info.texture != null) return info;
+            if (gamePaths == null)
+            {
+                gamePaths = new Dictionary<string, string>();
+                var db = Resources.Load<KoboldDatabaseScriptable>("KoboldDatabase");
+                if (db?.koboldTextureInfos != null)
+                    foreach (string text in db.koboldTextureInfos)
+                        if (!text.IsNullOrEmpty()) gamePaths[RawKey(text)] = text;
+                UnityEngine.Debug.Log("BrightQud: game sprite list has " + gamePaths.Count + " tiles");
+            }
+            info = gamePaths.TryGetValue(key, out string path) ? Resources.Load<exTextureInfo>("TextureInfo/" + path) : null;
+            if (info == null)
+            {
+                UnityEngine.Debug.Log("BrightQud: no game sprite for " + key);
+                info = SpriteManager.GetTextureInfo(key);
+            }
+            Originals[key] = info;
+            return info;
+        }
+
         // The same virtual tile with an effect drawn on top of it: particles otherwise replace the whole
         // cell (the character vanished under a blood splash or the HP heart). Null if baseVirt isn't ours.
         public static string WithOverlay(string baseVirt, string overlayKey, Color fg, Color detail, bool text)
@@ -285,10 +324,11 @@ namespace BrightQud
             string underKey = under != null ? Key(under) : null;
             if (underKey != null && !IsOurs(underKey) && !underKey.StartsWith("liquids/", StringComparison.Ordinal))
                 underKey = null;
+            bool underGameArt = underKey != null && Settings.GameSprites(SpriteSets.Liquids);
             if (tile.StartsWith(Doll.Prefix, StringComparison.Ordinal))
             {
                 string dv = Prefix + tile + (memory ? clearMemory ? "|mc" : "|m" : "")
-                    + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) : "")
+                    + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) + (underGameArt ? "|uv" : "") : "")
                     + (frame != 0 ? "|f" + frame : "") + (hud != 0 ? "|h" + hud : "");
                 lock (Lock)
                 {
@@ -296,19 +336,32 @@ namespace BrightQud
                     {
                         Key = Doll.LayerPrefix + "body/base", Doll = tile, Fg = fg, Detail = detail, Memory = memory,
                         ClearMemory = clearMemory, UnderKey = underKey, Under = underColor, UnderDetail = underDetail,
-                        Style = StyleNone, Frame = frame, Hud = hud
+                        Style = StyleNone, Frame = frame, Hud = hud, UnderGameArt = underGameArt
                     };
                 }
                 return dv;
             }
-            bool ours = IsOurs(key);
-            if (style == StyleProjectile && !ours) return null; // vanilla projectiles are fine as they are
+            // A sprite set switched off in Options: our PNG took over the game's key, so the cell must be
+            // taken over too, or the game would draw our PNG.
+            string raw = RawKey(tile);
+            bool gameArt = IsOurs(key) && !key.StartsWith("brightqud", StringComparison.Ordinal)
+                && Settings.GameSprites(SpriteSets.GroupOf(raw));
+            if (!gameArt && key.StartsWith("brightqudwall/", StringComparison.Ordinal))
+                gameArt = raw != key && Settings.GameSprites(SpriteSets.Walls);
+            if (gameArt)
+            {
+                key = raw;
+                if (style == StyleNone) style = StylePlain;
+            }
+            bool ours = !gameArt && IsOurs(key);
+            if (style == StyleProjectile && !ours && !gameArt) return null; // vanilla projectiles are fine as they are
             if (ours && style != StyleProjectile) style = StyleNone; // hand-drawn tiles carry their own style
             if (!ours || !Generated.HumanoidKeys.Contains(key)) mutations = 0;
             // Vanilla tiles are taken over to auto-style them or to compose them onto our terrain.
             if (!ours && underKey == null && style == StyleNone) return null;
             string virt = Prefix + key + "|" + Hex(fg) + "|" + Hex(detail) + (memory ? clearMemory ? "|mc" : "|m" : "")
-                + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) : "")
+                + (underKey != null ? "|u:" + underKey + "|" + Hex(underColor) + "|" + Hex(underDetail) + (underGameArt ? "|uv" : "") : "")
+                + (gameArt ? "|v" : "")
                 + (style != StyleNone ? "|s" + style : "")
                 + (mutations != 0 ? "|mu" + mutations : "")
                 + (frame != 0 ? "|f" + frame : "")
@@ -318,7 +371,7 @@ namespace BrightQud
                 Requests[virt] = new Request
                 {
                     Key = key, Fg = fg, Detail = detail, Memory = memory, ClearMemory = clearMemory, UnderKey = underKey, Under = underColor, UnderDetail = underDetail,
-                    Style = style, Mutations = mutations, Frame = frame, Hud = hud
+                    Style = style, Mutations = mutations, Frame = frame, Hud = hud, GameArt = gameArt, UnderGameArt = underGameArt
                 };
             }
             return virt;
@@ -328,6 +381,12 @@ namespace BrightQud
         // truecolor art. For our tiles they get a recolored sprite instead (UI thread only).
         public static Sprite UISprite(string tile, Color fg, Color detail)
         {
+            // The game paints the Excavate up/down icons red; the stairs they dig are grey and white.
+            if (tile.IndexOf("sw_stairs", StringComparison.OrdinalIgnoreCase) >= 0 && Pack(fg) == Pack(QudColor.ColorMap['r']))
+            {
+                fg = QudColor.ColorMap['y'];
+                detail = QudColor.ColorMap['Y'];
+            }
             string virt = Resolve(tile, fg, detail, false);
             if (virt == null || !GameManager.IsOnUIContext() || !TryGet(virt, out exTextureInfo info)) return null;
             return SpriteManager.GetUnitySprite(info);
@@ -494,9 +553,9 @@ namespace BrightQud
 
         // A vanilla 3-color tile converted to truecolor pixels with the dual-color shader's math:
         // rgb = mix(fg, detail, tex.r), alpha = tex.a.
-        static Color[] Vanilla(string key, Color fg, Color detail)
+        static Color[] Vanilla(string key, Color fg, Color detail, bool gameArt = false)
         {
-            exTextureInfo info = SpriteManager.GetTextureInfo(key);
+            exTextureInfo info = gameArt ? Original(key) : SpriteManager.GetTextureInfo(key);
             if (info.width != 16 || info.height != 24) throw new InvalidOperationException("not a 16x24 tile");
             Color[] src = info.texture.GetPixels(info.x, info.y, info.width, info.height);
             // Another mod's truecolor tile: its pixels are final colors, keep them (auto-style then
@@ -620,10 +679,12 @@ namespace BrightQud
         // Map HUD drawn into creature tiles (screen rows: 0 = top). Unity rows are bottom-up.
         // hud bits: 1 hostile ring, 2 ally ring, 4-28 health bucket, 32 item sparkle, 64 player ring,
         // 128 low-health pulse (player ring turns red), 256 talk bubble, 512 interact marker,
-        // 1024 faded talk bubble (already talked to), 2048 flames (burning), 4096 flame flicker frame.
+        // 1024 faded talk bubble (already talked to), 2048 flames (burning), 4096 flame flicker frame,
+        // 8192 algae on water (bits 14-15: which layout).
         static void DrawHud(Color[] px, int hud)
         {
             int ring = hud & 3, health = (hud >> 2) & 7;
+            if ((hud & 8192) != 0) AlgaeStrands(px, (hud >> 14) & 3);
             if ((hud & 2048) != 0) Flames(px, (hud & 4096) != 0);
             if ((hud & 256) != 0)
             {
@@ -671,6 +732,28 @@ namespace BrightQud
                     px[i] = x - 3 < filled ? fill : new Color(0.06f, 0.08f, 0.12f, 1f);
                 }
             }
+        }
+
+        // Algae floating on water, as short strands and specks (x, screen row, length); four layouts so a lake
+        // doesn't repeat. Keep in sync with tools/review_hinnom.py.
+        static readonly int[][][] Strands =
+        {
+            new[] { new[] { 2, 4, 4 }, new[] { 10, 9, 3 }, new[] { 4, 15, 5 }, new[] { 12, 19, 1 }, new[] { 7, 1, 1 } },
+            new[] { new[] { 9, 2, 5 }, new[] { 1, 8, 3 }, new[] { 11, 14, 3 }, new[] { 3, 20, 4 }, new[] { 6, 12, 1 } },
+            new[] { new[] { 5, 6, 4 }, new[] { 12, 3, 1 }, new[] { 1, 13, 4 }, new[] { 9, 17, 5 }, new[] { 13, 11, 1 } },
+            new[] { new[] { 0, 2, 3 }, new[] { 7, 7, 5 }, new[] { 2, 18, 3 }, new[] { 10, 21, 4 }, new[] { 4, 11, 1 } },
+        };
+
+        static void AlgaeStrands(Color[] px, int layout)
+        {
+            Color light = HexColor("4f9a55"), dark = HexColor("377a4c");
+            foreach (int[] s in Strands[layout])
+                for (int i = 0; i < s[2]; i++)
+                {
+                    int row = s[1] + (i / 2) % 2, x = s[0] + i; // a small wave
+                    int p = (23 - row) * 16 + x;
+                    if (x < 16 && row < 24 && px[p].a > 0.9f) px[p] = i == 1 ? light : dark;
+                }
         }
 
         // Flame tongues on both sides and above, only where the object itself doesn't cover them.
@@ -753,15 +836,16 @@ namespace BrightQud
         {
             // Frame 1: brightqudframe/<key>; ambient tiles also have frames 2-3 (brightqudframe2/, 3/).
             string frameKey = (req.Frame <= 1 ? "brightqudframe/" : "brightqudframe" + req.Frame + "/") + req.Key;
-            bool altFrame = req.Frame >= 1 && IsOurs(frameKey);
+            bool altFrame = req.Frame >= 1 && !req.GameArt && IsOurs(frameKey);
             Color[] px = req.Doll != null
                 ? Doll.Compose(req.Doll, (k, f, d) => IsOurs(Key(k)) ? Recolored(Key(k), f, d) : null,
                     p => Stylize(p, 16, 24, StyleObject))
                 : altFrame ? Recolored(frameKey, req.Fg, req.Detail)
-                : IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
-                : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail)), 16, 24, req.Style)
+                : !req.GameArt && IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
+                : req.Style == StylePlain ? Vanilla(req.Key, req.Fg, req.Detail, true)
+                : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt), 16, 24, req.Style)
                 : Vanilla(req.Key, req.Fg, req.Detail);
-            if (req.Key.StartsWith("liquids/", StringComparison.Ordinal)) ToneLiquid(px);
+            if (req.Key.StartsWith("liquids/", StringComparison.Ordinal) && !req.GameArt) ToneLiquid(px);
             if (req.Style == StyleProjectile)
                 for (int i = 0; i < px.Length; i++)
                     if (px[i].a < 0.6f) px[i] = Color.clear; // drop the baked ground/drop shadow
@@ -771,9 +855,9 @@ namespace BrightQud
             if (req.UnderKey != null)
             {
                 // Same look as the liquid's own cells: ours recolored, vanilla with the flat-tier math.
-                Color[] under = IsOurs(req.UnderKey) ? Recolored(req.UnderKey, req.Under, req.UnderDetail)
-                    : Vanilla(req.UnderKey, Brighten(req.Under), Brighten(req.UnderDetail));
-                if (req.UnderKey.StartsWith("liquids/", StringComparison.Ordinal)) ToneLiquid(under);
+                Color[] under = !req.UnderGameArt && IsOurs(req.UnderKey) ? Recolored(req.UnderKey, req.Under, req.UnderDetail)
+                    : Vanilla(req.UnderKey, Brighten(req.Under), Brighten(req.UnderDetail), req.UnderGameArt);
+                if (req.UnderKey.StartsWith("liquids/", StringComparison.Ordinal) && !req.UnderGameArt) ToneLiquid(under);
                 if (under.Length == px.Length)
                     for (int i = 0; i < px.Length; i++) px[i] = Over(px[i], under[i]);
             }
@@ -1394,8 +1478,9 @@ namespace BrightQud
         {
             try
             {
-                if (go == null || !Settings.LookStats) return;
-                string summary = go.Brain != null && !go.IsPlayer() ? Creature(go) : go.Brain == null ? Region(go) ?? Item(go) : null;
+                if (go == null || Settings.LookStats == "Off") return;
+                string summary = go.Brain != null && !go.IsPlayer() ? (Scanned(go) ? Creature(go) : null)
+                    : go.Brain == null ? Region(go) ?? Item(go) : null;
                 if (!summary.IsNullOrEmpty())
                     __result.LongDescription = summary + "\n\n" + __result.LongDescription;
             }
@@ -1403,6 +1488,18 @@ namespace BrightQud
             {
                 MetricsManager.LogException("BrightQud.LookStats", e);
             }
+        }
+
+        // Level, HP, AV, DV and powers are what scanning is for, so by default they need it. Your own
+        // companions are the exception: the game's own screens show theirs.
+        static bool Scanned(XRL.World.GameObject o)
+        {
+            if (Settings.LookStats == "Always" || o.IsPlayerLed()) return true;
+            var player = The.Player;
+            if (player == null) return false;
+            var scan = XRL.World.Capabilities.Scanning.GetScanTypeFor(o);
+            return scan != XRL.World.Capabilities.Scanning.Scan.Unscannable
+                && XRL.World.Capabilities.Scanning.HasScanningFor(player, scan);
         }
 
         static string Words(string id) =>
@@ -1520,6 +1617,33 @@ namespace BrightQud
         }
     }
 
+    // Groups of tiles that can each go back to the game's sprites (Options -> Mods). The folder a tile
+    // lives in decides, except for the tiles listed in Generated.SpriteGroups (read from the blueprints:
+    // a dreadroot lives in Creatures/ but is a plant).
+    public static class SpriteSets
+    {
+        public const int None = 0, Creatures = 1, Plants = 2, Items = 3, Furniture = 4, Walls = 5, Liquids = 6;
+        public static readonly string[] OptionIds =
+        {
+            null, "OptionBrightQudSpritesCreatures", "OptionBrightQudSpritesPlants", "OptionBrightQudSpritesItems",
+            "OptionBrightQudSpritesFurniture", "OptionBrightQudSpritesWalls", "OptionBrightQudSpritesLiquids"
+        };
+
+        public static int GroupOf(string key)
+        {
+            if (key.StartsWith("brightqud", StringComparison.Ordinal)) return None;
+            if (Generated.SpriteGroups.TryGetValue(key, out int g)) return g;
+            if (key.StartsWith("liquids/", StringComparison.Ordinal)) return Liquids;
+            if (key.StartsWith("creatures/", StringComparison.Ordinal)) return Creatures;
+            if (key.StartsWith("items/", StringComparison.Ordinal)) return Items;
+            if (key.StartsWith("furniture/", StringComparison.Ordinal)) return Furniture;
+            if (key.StartsWith("walls", StringComparison.Ordinal)) return Walls;
+            // Painted families end in an 8-digit neighbour mask: tiles/wall/wood-10101010.
+            int dash = key.LastIndexOf('-');
+            return dash >= 0 && key.Length - dash == 9 ? Walls : None;
+        }
+    }
+
     // In-game switches (mod Options.xml, "Mods" section). Read at most once per second.
     public static class Settings
     {
@@ -1527,10 +1651,14 @@ namespace BrightQud
         static bool refreshed;
         static bool animation = true, tileAnimation = false, autoStyle = true, ground = true, threatRings = true, healthBars = true,
             itemSparkle = true, playerMarker = true, lowHealth = true, talkMarkers = true,
-            interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true, lookStats = true,
+            interactMarkers = true, clearMemory = true, fireOverlay = true, effectGround = true, dangerTint = true,
             abilityHelp = true, compareItems = true, explainPowers = true, questBanner = true;
         static bool paperDoll = true, npcDoll = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
+        static string lookStats = "With scanning";
+        static bool showMutations = true;
+        // Sprite sets (SpriteSets.Creatures...): true = our sprites, false = the game's.
+        static readonly bool[] spriteOn = { true, true, true, true, true, true, true };
 
         static void Refresh()
         {
@@ -1557,7 +1685,16 @@ namespace BrightQud
                 fireOverlay = XRL.UI.Options.GetOption("OptionBrightQudFireOverlay", "Yes").EqualsNoCase("Yes");
                 effectGround = XRL.UI.Options.GetOption("OptionBrightQudEffectGround", "Yes").EqualsNoCase("Yes");
                 dangerTint = XRL.UI.Options.GetOption("OptionBrightQudDangerTint", "Yes").EqualsNoCase("Yes");
-                lookStats = XRL.UI.Options.GetOption("OptionBrightQudLookStats", "Yes").EqualsNoCase("Yes");
+                lookStats = XRL.UI.Options.GetOption("OptionBrightQudLookStatsMode", "With scanning") ?? "With scanning";
+                showMutations = XRL.UI.Options.GetOption("OptionBrightQudShowMutations", "Yes").EqualsNoCase("Yes");
+                bool changed = false;
+                for (int g = 1; g < spriteOn.Length; g++)
+                {
+                    bool on = XRL.UI.Options.GetOption(SpriteSets.OptionIds[g], "Yes").EqualsNoCase("Yes");
+                    if (on != spriteOn[g]) changed = true;
+                    spriteOn[g] = on;
+                }
+                if (changed) Recolor.ForgetResolved();
                 abilityHelp = XRL.UI.Options.GetOption("OptionBrightQudAbilityHelp", "Yes").EqualsNoCase("Yes");
                 compareItems = XRL.UI.Options.GetOption("OptionBrightQudCompareItems", "Yes").EqualsNoCase("Yes");
                 explainPowers = XRL.UI.Options.GetOption("OptionBrightQudExplainPowers", "Yes").EqualsNoCase("Yes");
@@ -1604,7 +1741,11 @@ namespace BrightQud
         public static bool FireOverlay { get { Refresh(); return fireOverlay; } }
         public static bool EffectGround { get { Refresh(); return effectGround; } }
         public static bool DangerTint { get { Refresh(); return dangerTint; } }
-        public static bool LookStats { get { Refresh(); return lookStats; } }
+        // "With scanning" (creature stats only if your bio/tech/structure scanning reveals them), "Always" or "Off".
+        public static string LookStats { get { Refresh(); return lookStats; } }
+        public static bool ShowMutations { get { Refresh(); return showMutations; } }
+        // True when this sprite set is switched off in Options and the game's sprites are wanted.
+        public static bool GameSprites(int set) { Refresh(); return set != SpriteSets.None && !spriteOn[set]; }
         public static bool ExplainPowers { get { Refresh(); return explainPowers; } }
         public static bool QuestBanner { get { Refresh(); return questBanner; } }
         public static bool AbilityHelp { get { Refresh(); return abilityHelp; } }
@@ -1621,7 +1762,7 @@ namespace BrightQud
 
         // "Worn gear": the player is drawn from their equipment (Doll.cs).
         public static bool PaperDoll { get { Refresh(); return paperDoll; } }
-        public static bool NpcDoll { get { Refresh(); return npcDoll; } }
+        public static bool NpcDoll { get { Refresh(); return npcDoll && spriteOn[SpriteSets.Creatures]; } }
 
         // The tile to draw for the player: worn gear (paper doll), the chosen look, else the game's tile.
         public static string PlayerTile(string gameTile)
@@ -1710,6 +1851,8 @@ namespace BrightQud
             XRL.World.GameObject top = lastTop;
             if (creature && !isPlayer) DollTarget = top;
             if (memory) hud = 0;
+            if (e.Tile != null && e.Tile.StartsWith("Tiles2/gas_", StringComparison.Ordinal)) GasColors(cell, ch);
+            bool gameLiquids = Settings.GameSprites(SpriteSets.Liquids);
             if (!isPlayer && Settings.Ground && cell.ParentZone != null && cell.ParentZone.IsWorldMap())
             {
                 ch.Foreground = WorldTone(ch.Foreground);
@@ -1747,7 +1890,8 @@ namespace BrightQud
             if (Settings.Ground && cell.ParentZone != null && !cell.ParentZone.IsWorldMap())
             {
                 int kind = ZoneKind(cell);
-                if (wallSwap != null && top != null && cell.X < wallSwap.GetLength(0) && cell.Y < wallSwap.GetLength(1)
+                if (wallSwap != null && top != null && !Settings.GameSprites(SpriteSets.Walls)
+                    && cell.X < wallSwap.GetLength(0) && cell.Y < wallSwap.GetLength(1)
                     && wallSwap[cell.X, cell.Y] != null && SwapKind(top.Blueprint) != 0)
                 {
                     ch._Tile = wallSwap[cell.X, cell.Y];
@@ -1799,12 +1943,14 @@ namespace BrightQud
                         ch.Detail = Calm(ch.Detail, zoneGround);
                     }
                 }
-                else if (top != null && top.LiquidVolume != null && kind != KindPlain)
+                else if (top != null && top.LiquidVolume != null && !gameLiquids)
                 {
-                    ch.Foreground = ZoneLiquid(kind, ch.Foreground, false);
-                    ch.Detail = ZoneLiquid(kind, ch.Detail, true);
+                    int lk = LiquidKind(kind, top);
+                    ch.Foreground = ZoneLiquid(lk, ch.Foreground, false);
+                    ch.Detail = ZoneLiquid(lk, ch.Detail, true);
                 }
-                else if (kind == KindFamily && (zoneFamily == FamilyJungle || zoneFamily == FamilyDeepJungle) && top != null && IsPlant(top))
+                else if (kind == KindFamily && (zoneFamily == FamilyJungle || zoneFamily == FamilyDeepJungle) && top != null && IsPlant(top)
+                    && !Settings.GameSprites(SpriteSets.Plants))
                 {
                     // Jungle plants: deeper, darker greens ("dense, dark, wet"); trunks and fruit keep theirs.
                     ch.Foreground = Deepen(ch.Foreground);
@@ -1833,14 +1979,24 @@ namespace BrightQud
                 hud &= ~128;
                 if (!Settings.PlayerMarker) hud &= ~64;
             }
+            // Highlight mode: a ripe plant shows its fruit and a steady glint (the game only tells harvesters).
+            if (e.Alt && !memory && top != null && top.Brain == null && RipeForPlayer(top))
+            {
+                ch.Foreground = BaseColor(top);
+                string dc0 = top.Render.DetailColor;
+                if (!dc0.IsNullOrEmpty() && QudColor.ColorMap.TryGetValue(dc0[0], out Color rd)) ch.Detail = rd;
+                hud |= 32;
+            }
             if (!Settings.AutoStyle) style = Recolor.StyleNone;
             XRL.World.GameObject liquid = cell.GetFirstObjectWithPart("LiquidVolume");
             string liquidTile = liquid?.Render?.Tile;
             bool trickle = false;
             if (liquidTile != null && e.Tile != null && e.Tile == liquidTile && cell.ParentZone != null
-                && !cell.ParentZone.IsWorldMap())
+                && !cell.ParentZone.IsWorldMap() && !gameLiquids)
             {
                 ch._Tile = LiquidTile(liquid, liquidTile, out trickle);
+                if (!trickle && LiquidKind(ZoneKind(cell), liquid) == KindReef && liquid.LiquidVolume.ComponentLiquids.ContainsKey("algae"))
+                    hud |= 8192 | Hash(cell.X, cell.Y) % 4 << 14;
                 if (!memory) SeenLiquid(cell.ParentZone, liquid, ch.Foreground, ch.Detail);
             }
             if (liquidTile != null && e.Tile != null && e.Tile != liquidTile)
@@ -1848,7 +2004,7 @@ namespace BrightQud
                 // The same tile and colours as the liquid's own cells (a mushroom standing in primordial
                 // soup stands in soup, not in plain water). LiquidVolume keeps the (mixed) liquid colours on
                 // its Render part. Fallback: the liquid tint the game put in the cell background.
-                under = LiquidTile(liquid, liquidTile, out bool _);
+                under = gameLiquids ? liquidTile : LiquidTile(liquid, liquidTile, out bool _);
                 string cs = liquid.Render.TileColor.IsNullOrEmpty() ? liquid.Render.ColorString : liquid.Render.TileColor;
                 int amp = cs?.LastIndexOf('&') ?? -1;
                 if (amp >= 0 && amp + 1 < cs.Length && QudColor.ColorMap.TryGetValue(cs[amp + 1], out Color lc))
@@ -1857,9 +2013,12 @@ namespace BrightQud
                     underColor = IsDefault(ch.Background) ? QudColor.ColorMap['B'] : ch.Background;
                 string dc = liquid.Render.DetailColor;
                 underDetail = !dc.IsNullOrEmpty() && QudColor.ColorMap.TryGetValue(dc[0], out Color ld) ? ld : underColor;
-                int lk = ZoneKind(cell);
-                underColor = ZoneLiquid(lk, underColor, false);
-                underDetail = ZoneLiquid(lk, underDetail, true);
+                if (!gameLiquids)
+                {
+                    int lk = LiquidKind(ZoneKind(cell), liquid);
+                    underColor = ZoneLiquid(lk, underColor, false);
+                    underDetail = ZoneLiquid(lk, underDetail, true);
+                }
                 // Best: the colours this liquid's own cells are drawn with (mixes like algal water are
                 // coloured by the render event, not by the object's Render part).
                 if (LiquidSeenColors(cell.ParentZone, liquid, out Color sf, out Color sd))
@@ -1892,6 +2051,26 @@ namespace BrightQud
         [ThreadStatic] static XRL.World.GameObject lastTop; // object the cell shows, null for bare ground
         [ThreadStatic] static bool lastCrystal; // Moon Stair crystal or its floor: colors pulled toward lavender
         [ThreadStatic] static Color lastBaseFg;
+
+        // Dense gas asks the game for its secondary colour as a solid cell background, which turned our
+        // see-through puffs into a filled square. That colour goes into the puffs' glints instead, at every
+        // density, and the cell keeps the ground.
+        static void GasColors(Cell cell, ConsoleChar ch)
+        {
+            string cs = cell.GetFirstObjectWithPart("Gas")?.GetPart<XRL.World.Parts.Gas>()?.ColorString;
+            int bg = cs?.IndexOf('^') ?? -1;
+            ch.Detail = bg >= 0 && bg + 1 < cs.Length && QudColor.ColorMap.TryGetValue(cs[bg + 1], out Color second)
+                ? second : ch.Foreground;
+            ch.Background = QudColor.ColorMap['k'];
+        }
+
+        // Same condition as the game's own highlight (Cell.RenderAlt): ripeness needs Harvestry.
+        static bool RipeForPlayer(XRL.World.GameObject o)
+        {
+            var player = The.Player;
+            return player != null && player.HasPart<XRL.World.Parts.Skill.CookingAndGathering_Harvestry>()
+                && o.TryGetPart<XRL.World.Parts.Harvestable>(out var h) && h != null && h.Ripe;
+        }
 
         // The object's own foreground color (effects like Burning flicker the drawn one).
         static Color BaseColor(XRL.World.GameObject o)
@@ -1941,8 +2120,9 @@ namespace BrightQud
                 player = top.IsPlayer();
                 hud = player ? PlayerHud(top) : HudOf(top);
                 // Mutations are parts named after their class (Horns, MultipleArms, Wings, ...).
-                for (int b = 0; b < Recolor.MutationOrder.Length; b++)
-                    if (top.HasPart(Recolor.MutationOrder[b])) mutations |= 1 << b;
+                if (Settings.ShowMutations)
+                    for (int b = 0; b < Recolor.MutationOrder.Length; b++)
+                        if (top.HasPart(Recolor.MutationOrder[b])) mutations |= 1 << b;
                 return Recolor.StyleObject;
             }
             bool container = top.HasPart("Container");
@@ -2345,7 +2525,7 @@ namespace BrightQud
             for (int i = 0; i < n; i++) t[i] = prefix + i;
             return t;
         }
-        static readonly Color ReefWater = Hex("4aa8d8"), Algae = Hex("3fae3a");
+        static readonly Color ReefWater = Hex("3a8fb4"), Algae = Hex("3fae3a");
         static readonly Color SoupTeal = Hex("2f6e66"), LavaLight = Hex("d8843c");
         static readonly Color VerdigrisMetal = Hex("5f857e"), VerdigrisPatina = Hex("4a6a4c");
 
@@ -2467,6 +2647,15 @@ namespace BrightQud
         {
             Color.RGBToHSV(c, out float h, out float s, out float v);
             return Color.Lerp(Color.HSVToRGB(h, s * 0.5f, v), ground, 0.35f);
+        }
+
+        // Algal water looks the same everywhere (Palladium Reef's blue water with green algae: Lake Hinnom was
+        // a solid sheet of green). The Rainbow Wood keeps its own light over everything.
+        static int LiquidKind(int kind, XRL.World.GameObject liquid)
+        {
+            if (kind == KindFungal) return kind;
+            var lv = liquid?.LiquidVolume;
+            return lv != null && lv.ComponentLiquids.ContainsKey("algae") ? KindReef : kind;
         }
 
         // Liquids in zones with their own look.

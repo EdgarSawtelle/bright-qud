@@ -76,47 +76,54 @@ def wings():
 
 
 def wingsopen():
-    """SPREAD wings (flying): bone leading-edge arm up and out, separate feather fingers with gaps."""
+    """SPREAD wings (flying): a broad pennant on each side, bone leading edge, filled feather
+    membrane (roles 4/5/6) with a scalloped lower edge."""
     half = [
-        "........",  # 0
-        ".w..4...",  # 1
-        ".w..4...",  # 2
-        "5w..5...",  # 3
-        "5t..5...",  # 4
-        "5w..5...",  # 5
-        "5.w.5...",  # 6
-        "5.w.6...",  # 7
-        "4.w.6...",  # 8
-        "5.wt....",  # 9
-        "5.5wt...",  # 10
-        "6.5.....",  # 11
-        "..5.....",  # 12
-        "..6.....",  # 13
-        "........", "........", "........", "........", "........",
-        "........", "........", "........", "........", "........",
+        "ww4.....",  # 0
+        "wt44....",  # 1
+        "w4455...",  # 2
+        "w44555..",  # 3
+        "w44555..",  # 4
+        "w45555..",  # 5
+        "w45556..",  # 6
+        "w45566..",  # 7
+        "w4556...",  # 8
+        "w4556...",  # 9
+        "w4566...",  # 10
+        "w456....",  # 11
+        "w456....",  # 12
+        "5455....",  # 13
+        "5.56....",  # 14
+        "5.5.....",  # 15
+        "6.5.....",  # 16
+        "..6.....",  # 17
+        "........", "........", "........", "........", "........", "........",
     ]
     return _mir(half[:24])
 
 
 def quills():
+    """four slim bone quills fanning from each shoulder blade, calm and symmetric."""
     c = C()
-    for (x1, y1) in ((1, 1), (0, 5), (0, 9), (0, 13), (1, 17)):
-        c.line(4, 11, x1, y1, "w", mirror=True)
-        c.line(5, 11, x1 + 1, y1, "t", mirror=True)
-    c.line(6, 9, 4, 0, "w", mirror=True)
-    for (x, y) in ((1, 1), (0, 5), (0, 9), (0, 13), (1, 17), (4, 0)):
+    for (x1, y1) in ((1, 2), (0, 6), (0, 10), (1, 14)):
+        c.line(4, 10, x1, y1, "w", mirror=True)
+    for (x, y) in ((1, 2), (0, 6), (0, 10), (1, 14)):
         c.m(x, y, "t")
+    c.line(6, 9, 5, 1, "w", mirror=True); c.m(5, 1, "t")
     return c.out()
 
 
 def stinger():
+    """segmented tail: 3-wide chitin bulbs up the left side, slimmer arch over the head, barb on the right."""
     c = C()
-    path = [(2, 20), (1, 18), (0, 16), (0, 14), (0, 12), (0, 10), (0, 8), (0, 6), (1, 4), (3, 2), (5, 1), (7, 1)]
-    for i, (x, y) in enumerate(path):
-        c.r(x, y, x + 1, y + 1, "R" if i % 2 else "r")
-        c.p(x, y + 1, "e")
-    c.r(8, 1, 9, 2, "w")
-    c.p(9, 3, "w"); c.p(9, 4, "y")
+    for i, (x, y) in enumerate([(1, 20), (1, 17), (1, 14), (1, 11), (1, 8)]):
+        c.r(x - 1, y - 1, x + 1, y + 1, "r" if i % 2 == 0 else "R")
+        c.p(x - 1, y + 1, "e"); c.p(x, y + 1, "e") if i % 2 == 0 else None
+    for i, (x, y) in enumerate([(1, 5), (3, 3), (5, 1), (7, 0), (9, 0), (11, 1)]):
+        c.r(x, y, x + 1, y + 1, "r" if i % 2 == 0 else "R")
+    c.r(12, 2, 13, 3, "R"); c.p(12, 3, "e")          # barb base
+    c.r(13, 4, 13, 5, "w"); c.p(13, 6, "y")          # bone barb dropping
+    c.p(14, 3, "w")
     return c.out()
 
 
@@ -156,17 +163,16 @@ def legs():
 
 
 def twoheads():
+    """second head on the right shoulder with a visible neck rising out of the shoulder line."""
     c = C()
-    c.r(11, 9, 12, 10, "S")
-    c.r(12, 5, 14, 5, "N")
-    c.r(11, 6, 15, 9, "s")
-    c.r(12, 10, 14, 10, "s")
-    c.r(15, 6, 15, 9, "S")
-    c.r(13, 10, 14, 10, "S")
-    c.p(12, 7, "O"); c.p(14, 7, "O")
-    c.p(12, 4, "N"); c.p(13, 4, "N"); c.p(14, 4, "N")
-    c.p(11, 6, "N")
-    c.p(13, 9, "R")
+    c.r(12, 3, 14, 3, "N")
+    c.r(11, 4, 15, 4, "N"); c.p(14, 4, "s"); c.p(15, 4, "S")
+    c.r(11, 5, 15, 5, "s"); c.p(15, 5, "S"); c.p(12, 5, "O"); c.p(14, 5, "O")
+    c.r(11, 6, 15, 6, "s"); c.p(15, 6, "S"); c.p(13, 6, "S")
+    c.r(12, 7, 14, 7, "s"); c.p(14, 7, "S"); c.p(13, 7, "R")
+    c.r(12, 8, 13, 8, "s"); c.p(13, 8, "S")
+    c.r(11, 9, 14, 9, "s"); c.p(14, 9, "S")
+    c.r(10, 10, 13, 10, "s"); c.p(13, 10, "S")
     return c.out()
 
 

@@ -7,6 +7,10 @@ Bold outlines, saturated colours and readability first. **Gameplay is unchanged*
 no creatures, items or stats and stores nothing in your save, so you can turn it off at any time.
 Every helper below has its own switch in **Options → Mods**.
 
+**Prefer the game's sprites?** Creatures, plants, items, furniture, walls and liquids each have a switch in
+Options → Mods that puts the game's own sprites back (with the outline, if restyling is on). Visible mutations on
+characters have their own switch too.
+
 ![Joppa with Bright Qud](screenshots/joppa.png)
 
 ## What it does
@@ -70,7 +74,7 @@ Every helper below has its own switch in **Options → Mods**.
   for low vision), or keep the game's own font.
 - **Interface colours** *(experimental)*: Qud teal (default), Tan parchment (light), Amber, Rust,
   Violet, Slate.
-- **Key stats at a glance**: looking at or hovering over things puts a short summary on top of the
+- **Key stats at a glance** (by default a creature's stats need bio, tech or structure scanning, as in the base game; Options → Mods can show them always or never): looking at or hovering over things puts a short summary on top of the
   description.
   - Monsters: level, HP, AV/DV, attacks with damage, ranged weapon, mutations.
   - Each mutation and fight skill gets a one-line explanation, red if it's dangerous to you

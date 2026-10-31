@@ -6,6 +6,13 @@
   <option ID="OptionBrightQudAnimation" DisplayText="Bright Qud: creature animation (bobbing, flapping wings)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (twinkles, glows, torch flicker; off by default)" Category="Mods" Type="Checkbox" Default="No"></option>
   <option ID="OptionBrightQudAutoStyle" DisplayText="Bright Qud: restyle tiles that aren't redrawn yet" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesCreatures" DisplayText="Bright Qud: new creature sprites (off = the game's sprites, with the outline)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesPlants" DisplayText="Bright Qud: new plant and tree sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesItems" DisplayText="Bright Qud: new item sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesFurniture" DisplayText="Bright Qud: new furniture and statue sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesWalls" DisplayText="Bright Qud: new wall sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudSpritesLiquids" DisplayText="Bright Qud: new liquid sprites and zone liquid colours (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudShowMutations" DisplayText="Bright Qud: show mutations on characters (wings, horns, extra arms...)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudGround" DisplayText="Bright Qud: colored ground instead of black" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudThreatRings" DisplayText="Bright Qud: red/green rings under enemies/allies" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudHealthBars" DisplayText="Bright Qud: health bars over hurt creatures" Category="Mods" Type="Checkbox" Default="Yes"></option>
@@ -18,7 +25,7 @@
   <option ID="OptionBrightQudFireOverlay" DisplayText="Bright Qud: draw flames on burning things (instead of a flashing square)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudEffectGround" DisplayText="Bright Qud: ground instead of black squares behind effect tiles" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudDangerTint" DisplayText="Bright Qud: world map tints regions too dangerous for your level (orange/red)" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudLookStats" DisplayText="Bright Qud: key stats at the top of look / hover descriptions" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudLookStatsMode" DisplayText="Bright Qud: key stats on look / hover (With scanning = creature stats need bio, tech or structure scanning)" Category="Mods" Type="Combo" Values="With scanning,Always,Off" Default="With scanning"></option>
   <option ID="OptionBrightQudQuestBanner" DisplayText="Bright Qud: quest banner (follow a quest from the Quests list: LT + left stick click)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudExplainPowers" DisplayText="Bright Qud: explain mutations and skills when looking" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudFont" DisplayText="Bright Qud: text font (Clear mono = detailed and aligned, Readable = easiest to read)" Category="Mods" Type="Combo" Values="Game default,Clear mono,Readable" Default="Clear mono"></option>

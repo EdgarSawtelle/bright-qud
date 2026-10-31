@@ -30,6 +30,7 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [list]
 [*]Clearer fonts: Clear mono or Readable (Atkinson Hyperlegible)
 [*]Interface colours: Qud teal, Tan parchment (light), Amber, Rust, Violet, Slate
+[*]Sprite sets: in Options > Mods, creatures, plants, items, furniture, walls and liquids can each go back to the game's own sprites (creatures keep the outline). Visible mutations on characters have their own switch.
 [*]Key stats at the top of look / hover descriptions (monster level, HP, AV/DV, attacks, mutations; item damage, armour, resistances)
 [*]Mutations and fight skills explained in one line each when you look at a creature (dangerous ones in red), plus its status (on fire, stunned...)
 [*]Quest helper: list your quests nearest first (LT + left stick click / F4), follow one and a banner shows the next step and direction
