@@ -529,6 +529,24 @@ def _coralrag_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x] = "5"
 
 
+def _ydglass_texture(g, y0, y1, rnd, light, mid, dark):
+    """Yd Freehold: "glass was blown into a machine artery and ion-colored to fluorescent green-yellow" - bundled tubes with
+    a bright core, darker glass between them, gold collars (detail) where the runs are joined."""
+    for y in range(y0, y1):
+        for x in range(16):
+            f = x % 5
+            g[y][x] = dark if f == 4 else (light if f in (1, 2) else mid)
+    for y in range(y0 + 4, y1, 10):                            # gold collars
+        for x in range(16):
+            g[y][x] = "4"
+            if y + 1 < y1:
+                g[y + 1][x] = "5"
+    for _ in range(4):                                         # bubbles in the glass
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(16)
+        if g[y][x] == light:
+            g[y][x] = "w"
+
+
 def _shale_texture(g, y0, y1, rnd, light, mid, dark):
     """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
     y = y0
@@ -566,10 +584,10 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
              "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture,
              "fulcrete": _fulcrete_texture, "vinefulcrete": _vinefulcrete_texture, "mudroot": _mudroot_texture, "crysteel": _crysteel_texture,
-             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture, "oolite": _oolite_texture, "gypsum": _gypsum_texture, "coralrag": _coralrag_texture}
+             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture, "oolite": _oolite_texture, "gypsum": _gypsum_texture, "coralrag": _coralrag_texture, "ydglass": _ydglass_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
 EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars",
-                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2", "gypsum", "coralrag"]
+                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2", "gypsum", "coralrag", "ydglass"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

@@ -681,10 +681,12 @@ namespace BrightQud
         // hud bits: 1 hostile ring, 2 ally ring, 4-28 health bucket, 32 item sparkle, 64 player ring,
         // 128 low-health pulse (player ring turns red), 256 talk bubble, 512 interact marker,
         // 1024 faded talk bubble (already talked to), 2048 flames (burning), 4096 flame flicker frame,
-        // 8192 algae on water (bits 14-15: which layout), 65536 sheen on asphalt (same layouts).
+        // 8192 algae on water (bits 14-15: which layout), 65536 sheen on asphalt (same layouts),
+        // bits 17-28 Yd Freehold's light: 3 bits per cell corner (Ground.GlowBits).
         static void DrawHud(Color[] px, int hud)
         {
             int ring = hud & 3, health = (hud >> 2) & 7;
+            if ((hud >> 17 & 0xfff) != 0) Glow(px, hud >> 17 & 0xfff);
             if ((hud & 8192) != 0) AlgaeStrands(px, (hud >> 14) & 3);
             if ((hud & 65536) != 0) Sheen(px, (hud >> 14) & 3);
             if ((hud & 2048) != 0) Flames(px, (hud & 4096) != 0);
@@ -755,6 +757,26 @@ namespace BrightQud
                     int row = s[1] + (i / 2) % 2, x = s[0] + i; // a small wave
                     int p = (23 - row) * 16 + x;
                     if (x < 16 && row < 24 && px[p].a > 0.9f) px[p] = i == 1 ? light : dark;
+                }
+        }
+
+        // Light across the cell, blended from its corners so neighbouring cells meet without an edge.
+        static void Glow(Color[] px, int bits)
+        {
+            float a = (bits & 7) / 7f, b = (bits >> 3 & 7) / 7f, c = (bits >> 6 & 7) / 7f, d = (bits >> 9 & 7) / 7f;
+            Color glow = HexColor("a8d450");
+            for (int row = 0; row < 24; row++)
+                for (int x = 0; x < 16; x++)
+                {
+                    float fx = (x + 0.5f) / 16f, fy = (row + 0.5f) / 24f;
+                    float v = Mathf.Lerp(Mathf.Lerp(a, b, fx), Mathf.Lerp(c, d, fx), fy) * 0.28f;
+                    if (v <= 0f) continue;
+                    int i = (23 - row) * 16 + x;
+                    Color p = px[i];
+                    if (p.a <= 0f) { px[i] = new Color(glow.r, glow.g, glow.b, v); continue; }
+                    Color o = Color.Lerp(p, glow, v);
+                    o.a = p.a + v * (1f - p.a);
+                    px[i] = o;
                 }
         }
 
@@ -1874,6 +1896,9 @@ namespace BrightQud
             if (memory) hud = 0;
             if (e.Tile != null && e.Tile.StartsWith("Tiles2/gas_", StringComparison.Ordinal)) GasColors(cell, ch);
             bool gameLiquids = Settings.GameSprites(SpriteSets.Liquids);
+            bool glowCell = glow != null && !memory && cell.ParentZone == glowZone;
+            bool tubeCell = top != null && SwapKind(top.Blueprint) == 25 && !Settings.GameSprites(SpriteSets.Walls);
+            if (glowCell && !tubeCell) hud |= GlowBits(cell.X, cell.Y);
             if (!isPlayer && Settings.Ground && cell.ParentZone != null && cell.ParentZone.IsWorldMap())
             {
                 ch.Foreground = WorldTone(ch.Foreground);
@@ -1933,6 +1958,13 @@ namespace BrightQud
                     else if (sk == 21) { ch.Foreground = GypsumGold; ch.Detail = GypsumShade; }
                     else if (sk == 22) { ch.Foreground = CoralRag; ch.Detail = CoralRagBite; }
                     else if (sk == 23 || sk == 24) { ch.Foreground = PalladiumSilver; ch.Detail = StrutCoral; }
+                    else if (sk == 25 || sk == 27)
+                    {
+                        // Slow breath, about 6 seconds, in six steps; the user wants this on, whatever "animated tiles" says.
+                        float breath = memory ? 0.4f : Mathf.Round((Mathf.Sin(XRL.Core.XRLCore.CurrentFrame * 0.034f) + 1f) * 2.5f) / 5f;
+                        ch.Foreground = Color.Lerp(TubeDim, TubeBright, breath);
+                        ch.Detail = TubeGold;
+                    }
                 }
                 // Carved marble, not neon: the friezes and the dais keep their gold.
                 if (top != null && top.Blueprint.StartsWith("Relief", StringComparison.Ordinal)) ch.Foreground = ReliefStone;
@@ -2098,7 +2130,7 @@ namespace BrightQud
                 underColor = underDetail = Color.white;
             }
             // Struts are pipes with floor showing round them.
-            if (ZoneKind(cell) == KindReef && top != null && SwapKind(top.Blueprint) >= 23)
+            if (ZoneKind(cell) == KindReef && top != null && SwapKind(top.Blueprint) >= 23 && SwapKind(top.Blueprint) <= 24)
             {
                 under = FamilyTiles[FamilyReef][Hash(cell.X, cell.Y) % 16];
                 underColor = underDetail = Color.white;
@@ -2117,6 +2149,7 @@ namespace BrightQud
             Color g = ColorFor(cell);
             if (memory) g = Color.Lerp(g, MemoryGround, MemoryFade);
             else g = Lit(g, cell);
+            if (glowCell && tubeCell) g = GlowOnCell(g, cell.X, cell.Y);
             ch.Background = g;
             // Empty text cells draw their "background" from Foreground (text shader swaps them).
             if (ch._Tile == null && ch.Char == ' ') ch.Foreground = g;
@@ -2699,7 +2732,8 @@ namespace BrightQud
             BuildWallTiles("fulcrete"), BuildWallTiles("fulcrete"), BuildWallTiles("mudroot"), BuildWallTiles("crysteel"),
             BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete"),
             BuildWallTiles("verdigris"), BuildWallTiles("verdigris2"), BuildWallTiles("gypsum"), BuildWallTiles("coralrag"),
-            BuildWallTiles("strut"), BuildWallTiles("strutcoral") };
+            BuildWallTiles("strut"), BuildWallTiles("strutcoral"),
+            BuildWallTiles("ydtube"), BuildWallTiles("ydtube2"), BuildWallTiles("ydpump") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2734,7 +2768,8 @@ namespace BrightQud
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
         // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
         // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence, 11 = fulcrete, 12 = ebon fulcrete, 13 = mudroot,
-        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum, 22 = coral rag, 23/24 = palladium struts bare / with coral; 0 = no swap.
+        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum, 22 = coral rag, 23/24 = palladium struts bare / with coral, 25 = Yd glass pipes (set 26 with gold collars), 27 = their pumps;
+        // 0 = no swap.
         const int VineFulcrete = 18; // kind 11 in the surface ruins' tiles: "vine-swathed"
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
@@ -2747,10 +2782,73 @@ namespace BrightQud
             : blueprint == "Verdigris" ? 19 : blueprint == "Gypsum" ? 21
             : blueprint.EndsWith("Coral Rag", StringComparison.Ordinal) ? 22
             : blueprint.StartsWith("Palladium Strut", StringComparison.Ordinal) ? 23
-            : blueprint.StartsWith("Coral and Palladium Strut", StringComparison.Ordinal) ? 24 : 0;
+            : blueprint.StartsWith("Coral and Palladium Strut", StringComparison.Ordinal) ? 24
+            : blueprint.StartsWith("YdFreeholdGlassHydraulicPipe", StringComparison.Ordinal) ? 25
+            : blueprint == "YdFreeholdFusionPumpingStation" ? 27
+            : blueprint == "YdFreeholdCrysteelPlatedWallWithPipes" ? 14 : 0;
 
         // Bare and overgrown struts are one lattice.
-        static bool Joins(int a, int b) => a == b || (a >= 23 && a <= 24 && b >= 23 && b <= 24);
+        static bool Joins(int a, int b) => a == b || (a >= 23 && a <= 24 && b >= 23 && b <= 24)
+            || ((a == 25 || a == 27) && (b == 25 || b == 27));
+
+        // A pipe cell with neighbours on 3-4 sides sits in a thick run: it follows the longer run (ydtube.py straight()).
+        static int Run(int[,] kind, int x, int y, int dx, int dy)
+        {
+            int n = 1;
+            for (int sign = -1; sign <= 1; sign += 2)
+                for (int a = x + dx * sign, b = y + dy * sign;
+                    a >= 0 && b >= 0 && a < kind.GetLength(0) && b < kind.GetLength(1) && kind[a, b] == 25;
+                    a += dx * sign, b += dy * sign) n++;
+            return n;
+        }
+
+        // Yd Freehold's light: one smooth field the district sits in, kept at cell corners (0-7) so each cell can paint
+        // a gradient (DrawHud) and no squares show. Pipe cells take it in their background: they pulse, and a texture
+        // per pulse step and glow value would be thousands.
+        const float GlowReach = 11f, GlowStrength = 0.28f;
+        static readonly Color PipeGlow = Hex("a8d450"), TubeDim = Hex("79a040"), TubeBright = Hex("b4dc5e"), TubeGold = Hex("c9a84a");
+        static int[,] glow;
+        static Zone glowZone;
+
+        static void ComputeGlow(Zone zone, int[,] kind)
+        {
+            if (zone == glowZone && glow != null) return;
+            glowZone = zone;
+            glow = null;
+            int w = kind.GetLength(0), h = kind.GetLength(1);
+            var pipes = new List<(int, int)>();
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                    if (kind[x, y] == 25) pipes.Add((x, y));
+            if (pipes.Count == 0) return;
+            glow = new int[w + 1, h + 1];
+            for (int x = 0; x <= w; x++)
+                for (int y = 0; y <= h; y++)
+                {
+                    float best = float.MaxValue;
+                    foreach (var (px, py) in pipes)
+                    {
+                        float dx = x - px - 0.5f, dy = (y - py - 0.5f) * 1.5f;
+                        best = Mathf.Min(best, dx * dx + dy * dy);
+                    }
+                    float f = Mathf.Max(0f, 1f - Mathf.Sqrt(best) / GlowReach);
+                    glow[x, y] = Mathf.RoundToInt(Mathf.Pow(f, 1.5f) * 7f);
+                }
+        }
+
+        // Four corners of the cell, packed for the virtual tile path.
+        static int GlowBits(int x, int y)
+        {
+            if (glow == null || x < 0 || y < 0 || x + 1 >= glow.GetLength(0) || y + 1 >= glow.GetLength(1)) return 0;
+            return glow[x, y] << 17 | glow[x + 1, y] << 20 | glow[x, y + 1] << 23 | glow[x + 1, y + 1] << 26;
+        }
+
+        static Color GlowOnCell(Color g, int x, int y)
+        {
+            int bits = GlowBits(x, y);
+            float k = ((bits >> 17 & 7) + (bits >> 20 & 7) + (bits >> 23 & 7) + (bits >> 26 & 7)) / 28f;
+            return Color.Lerp(g, PipeGlow, k * GlowStrength);
+        }
 
         static void ComputeWallSwaps(Zone zone)
         {
@@ -2771,7 +2869,8 @@ namespace BrightQud
                         break;
                     }
                 }
-            if (kind == null) return;
+            if (kind == null) { glow = null; glowZone = null; return; }
+            ComputeGlow(zone, kind);
             wallSwap = new string[w, h];
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
@@ -2782,7 +2881,14 @@ namespace BrightQud
                     int s = y < h - 1 && Joins(kind[x, y + 1], k) ? 2 : 0, wv = x > 0 && Joins(kind[x - 1, y], k) ? 1 : 0;
                     bool vines = k == 11 && zoneKind == KindFamily && zoneFamily == FamilyRuins;
                     int set = vines ? VineFulcrete : k == 19 && Hash(x, y) % 2 == 0 ? 20 : k; // 20: other rust streaks
-                    wallSwap[x, y] = SwapTiles[set][n | e | s | wv];
+                    int mask = n | e | s | wv;
+                    if (k == 25)
+                    {
+                        if (n != 0 && s != 0 && (e != 0 || wv != 0) || e != 0 && wv != 0 && (n != 0 || s != 0))
+                            mask = Run(kind, x, y, 1, 0) >= Run(kind, x, y, 0, 1) ? 4 | 1 : 8 | 2;
+                        if (Hash(x, y) % 4 == 0) set = 26;
+                    }
+                    wallSwap[x, y] = SwapTiles[set][mask];
                 }
         }
 

@@ -373,8 +373,8 @@ def main():
             write(img, flat_name(k))
             write(mask, "BrightQudMask/" + flat_name(k))
     # Palladium Reef struts: pipes that join their neighbours (see-through around them, so not painted walls).
-    import reefstruts
-    for k, rows in reefstruts.variants():
+    import reefstruts, ydtube
+    for k, rows in reefstruts.variants() + ydtube.variants():
         img, mask = B.render(rows, "terrain", fg="w", detail="c", with_mask=True)
         write(img, flat_name(k))
         write(mask, "BrightQudMask/" + flat_name(k))
