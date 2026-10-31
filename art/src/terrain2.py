@@ -316,13 +316,43 @@ def _limestone_texture(g, y0, y1, rnd, light, mid, dark):
             g[y][x - 1] = light
 
 
+def _shale_texture(g, y0, y1, rnd, light, mid, dark):
+    """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
+    y = y0
+    while y < y1:
+        h = rnd.choice((2, 2, 3))
+        off = rnd.randrange(16)
+        for x in range(16):
+            for r in range(h):
+                if y + r < y1:
+                    g[y + r][x] = dark if r == h - 1 else (light if r == 0 and (x + off) % 7 < 3 else mid)
+        y += h
+    for _ in range(4):                                         # flakes that broke off: a nick in the plate edge
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(0, 15)
+        g[y][x] = dark
+        g[y][x + 1] = dark
+
+
+def _sandstone_texture(g, y0, y1, rnd, light, mid, dark):
+    """Canyons: "rock is eroded to sand, sand is blown into lakes" - broad cross-bedded bands that slant."""
+    phase = rnd.randrange(12)
+    for y in range(y0, y1):
+        for x in range(16):
+            band = (y - y0 + (x + phase) // 3) % 7                 # slanted dune bedding
+            g[y][x] = dark if band == 6 else (light if band in (0, 1) else mid)
+    for y in range(y0 + 7, y1, 8):                             # a level bedding plane cuts the slanted bands
+        for x in range(16):
+            g[y][x] = dark
+
+
 MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_texture, "metal": _metal_texture,
              "slab": _slab_texture, "wood": _wood_texture, "brick": _brick_texture, "stone": _stone_texture,
              "plant": _plant_texture, "shroom": _shroom_texture, "crystal": _crystal_texture, "bone": _bone_texture,
              "tech": _tech_texture, "scale": _scale_texture,
-             "cage": _cage_texture, "petal": _petal_texture, "marl": _marl_texture, "limestone": _limestone_texture}
+             "cage": _cage_texture, "petal": _petal_texture, "marl": _marl_texture, "limestone": _limestone_texture,
+             "shale": _shale_texture, "sandstone": _sandstone_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
-EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone"]
+EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

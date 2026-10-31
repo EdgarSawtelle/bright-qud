@@ -1898,6 +1898,8 @@ namespace BrightQud
                     int sk = SwapKind(top.Blueprint);
                     if (sk == 3) { ch.Foreground = MarlChalk; ch.Detail = MarlShade; }
                     else if (sk == 4) { ch.Foreground = LimestoneGlaucous; ch.Detail = LimestoneShade; }
+                    else if (sk == 5) { ch.Foreground = ShaleRed; ch.Detail = ShaleShade; }
+                    else if (sk == 6) { ch.Foreground = SandstoneTan; ch.Detail = SandstoneShade; }
                 }
                 bool bare = top == null && (e.Tile != null ? e.Tile == cell.PaintTile : ch.Char == ' ' || ch.Char == '.');
                 // Salt dunes are floor objects with a tile of their own: drawn lighter than the ground around
@@ -1956,6 +1958,9 @@ namespace BrightQud
                     ch.Foreground = Deepen(ch.Foreground);
                     ch.Detail = Deepen(ch.Detail);
                 }
+                else if (kind == KindFamily && zoneFamily == FamilyCanyon && top != null && top.Blueprint.Contains("Dogthorn")
+                    && !Settings.GameSprites(SpriteSets.Plants))
+                    ch.Foreground = DogthornOlive; // dry-country thorn, not lime
                 else if (top != null && (top.Blueprint.Contains("Fulcrete") || top.Blueprint == "TombSultan6Wall"))
                 {
                     ch.Foreground = FulcreteGravel;
@@ -2279,15 +2284,16 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f") };
+            Hex("a5997f"), Hex("d0c6b8") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        const int FamilyCanyon = 15;  // "rotted to crimson and salt": white chalk, crimson in the cracks
         const int FamilyDeepJungle = 12;
         static readonly Color PinPrick = Hex("4a4528");
         const int FamilyJungle = 10;
@@ -2336,7 +2342,7 @@ namespace BrightQud
                 case "TerrainSaltmarsh": case "TerrainSaltmarsh2": case "TerrainWatervine": case "TerrainJoppaRedrockChannel":
                     return FamilyMarsh;
             }
-            if (bp.StartsWith("TerrainDesertCanyon", StringComparison.Ordinal)) return 2;
+            if (bp.StartsWith("TerrainDesertCanyon", StringComparison.Ordinal)) return FamilyCanyon;
             if (bp.StartsWith("TerrainBananaGrove", StringComparison.Ordinal)) return 3;
             return -1;
         }
@@ -2557,10 +2563,14 @@ namespace BrightQud
         // pale trunks with pressed petals. Joined to same-kind N/E/S/W neighbours; computed per zone refresh.
         static string[,] wallSwap;
         static readonly string[][] SwapTiles = { null, BuildWallTiles("cage"), BuildWallTiles("petal"),
-            BuildWallTiles("marl"), BuildWallTiles("limestone") };
+            BuildWallTiles("marl"), BuildWallTiles("limestone"), BuildWallTiles("shale"), BuildWallTiles("sandstone") };
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
+        // Shale and sandstone: deep red plates and tan bedding, read against the white canyon floor.
+        static readonly Color ShaleRed = Hex("743028"), ShaleShade = Hex("4c201c");
+        static readonly Color SandstoneTan = Hex("b07a58"), SandstoneShade = Hex("7a5238");
+        static readonly Color DogthornOlive = Hex("7a8448");
 
         static string[] BuildWallTiles(string material)
         {
@@ -2571,10 +2581,10 @@ namespace BrightQud
         }
 
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
-        // 4 = limestone (mountains); 0 = no swap.
+        // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock); 0 = no swap.
         static int SwapKind(string blueprint) =>
             blueprint.StartsWith("MushroomWall", StringComparison.Ordinal) ? 1 : blueprint == "Petal-Strewn WoodWall" ? 2
-            : blueprint == "Marl" ? 3 : blueprint == "Limestone" ? 4 : 0;
+            : blueprint == "Marl" ? 3 : blueprint == "Limestone" ? 4 : blueprint == "Shale" ? 5 : blueprint == "Sandstone" ? 6 : 0;
 
         static void ComputeWallSwaps(Zone zone)
         {

@@ -32,6 +32,7 @@ FAMILIES = {
     "hills": ("7d7460", "827965", "8a8a5a"),       # Hills and mountains: dry dirt, scree, wind-flattened grass
     "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
     "dunes": ("a5997f", "a89c83", "8c9592"),     # Salt desert: ivory wind ripples, cool grey cracks
+    "canyon": ("d0c6b8", "d5cbbd", "a4503c"),    # Desert canyons: chalk and salt, crimson in the cracks
 }
 
 # Jungle sunflecks: the ground brightens a little toward this colour in large soft patches (runtime
@@ -217,6 +218,31 @@ def hills(t, base, acc):
         t.put(t.rnd.randrange(16), t.rnd.randrange(24), shade(base, 1.22, 0.5))
 
 
+def canyon(t, base, acc):
+    """Desert canyons: "the fissure-wounds have rotted to crimson and salt" - pale chalk and salt crust cracked into
+    plates, crimson stain in the cracks (seen in the fan art's rust on chalk). Cracks start and end inside the tile."""
+    mix = lambda k: tuple(round(base[i] + (acc[i] - base[i]) * k) for i in range(3)) + (255,)
+    t.grain(base, 30, 0.96, 1.04)
+    for _ in range(t.rnd.randrange(2, 4)):                 # dry cracks, each with one short fork
+        x, y, n = t.rnd.randrange(0, 9), t.rnd.randrange(2, 21), t.rnd.randrange(4, 8)
+        fork = t.rnd.randrange(1, n)
+        for i in range(n):
+            t.put(x + i, y, mix(0.34))
+            if i == fork:
+                for j in (1, 2):
+                    t.put(x + i, y + j, mix(0.26))
+            elif i % 3 == 1:                               # the crack runs deeper, and redder
+                t.put(x + i, y, mix(0.5))
+            y += t.rnd.choice((0, 0, 1, -1))
+    for _ in range(t.rnd.randrange(1, 3)):                 # raised salt crust with a soft under-shadow
+        x, y = t.rnd.randrange(1, 13), t.rnd.randrange(2, 22)
+        for i in range(3):
+            t.put(x + i, y, shade(base, 1.05))
+            t.put(x + i, y + 1, shade(base, 0.92))
+    if t.rnd.random() < 0.4:                               # a rust speck blown off the walls
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), mix(0.4))
+
+
 def meadow(t, base, acc):
     """Flower fields: "prismatic filament colonizes the cracks between the salted rot" - salt cracks with
     faint coloured threads in them, short grass. Every colour stays close to the ground."""
@@ -278,7 +304,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
+DRAW = {"canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
 
 
 def tiles(family):

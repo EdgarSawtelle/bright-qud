@@ -9,6 +9,8 @@ from style_b3 import C  # noqa: E402
 HUMANOID = set()
 
 KEYS = {
+    "terrain/sw/fattree1": ("dogthorn1", "tall"),
+    "terrain/sw/fattree2": ("dogthorn2", "tall"),
     "creatures/sw/dog": "feral_dog",
     "creatures/sw/dreadroot": "dreadroot",
     "creatures/sw/lagroot": "lagroot",
@@ -429,7 +431,37 @@ def wight_bethsaida():
     return c.out()
 
 
+def dogthorn(seed):
+    """Dogthorn tree: "the bark is splintered into pointy spines ... a tangled nest of roots". A crooked splintered
+    trunk under a thin, broken crown of greasy leaves, with thorns breaking the outline. No lollipop."""
+    import random
+    from terrain3_1 import new, put, line, rows
+    rnd = random.Random(seed)
+    g = new(".")
+    lean = 1 if seed % 2 else -1
+    for (cx, cy, n) in ((3, 8, 13), (12, 7, 13), (8, 3, 15), (7, 9, 10), (11, 11, 6)):       # broken leaf clumps
+        for _ in range(n):
+            x, y = cx + rnd.randint(-3, 3), cy + rnd.randint(-2, 2)
+            put(g, x, y, rnd.choice("1223"))
+    for (x0, y0, x1, y1) in ((8, 13, 3, 7), (8, 12, 13, 6), (8, 12, 8, 3)):                  # bare boughs through the crown
+        line(g, x0, y0, x1, y1, "n")
+    x = 8
+    for y in range(11, 21):                                                                  # crooked trunk
+        put(g, x, y, "n"); put(g, x + 1, y, "N")
+        if y % 3 == 0:
+            x += lean if y < 16 else -lean
+    for (tx, ty, dx) in ((7, 13, -1), (10, 15, 1), (7, 17, -1), (10, 18, 1)):                # bark splinters
+        put(g, tx, ty, "w"); put(g, tx + dx, ty - 1, "w")
+    for (tx, ty, dx, dy) in ((0, 6, -1, -1), (15, 5, 1, -1), (4, 0, -1, -1), (12, 1, 1, -1), (0, 10, -1, 1),
+                             (15, 10, 1, 1), (8, 0, 0, -1), (5, 12, -1, 1), (13, 13, 1, 1)):  # thorns past the outline
+        put(g, tx, ty, "w"); put(g, tx - dx, ty - dy, "N")
+    for (x0, x1, y1) in ((8, 3, 22), (9, 13, 21), (8, 6, 22), (9, 11, 22)):                  # tangled roots
+        line(g, x0, 20, x1, y1, "N")
+    return rows(g)
+
+
 SPRITES = {
+    "dogthorn1": dogthorn(1), "dogthorn2": dogthorn(2),
     "feral_dog": feral_dog(), "dreadroot": dreadroot(), "lagroot": lagroot(),
     "elder_lagroot": elder_lagroot(), "shekhinah_hologram": shekhinah_hologram(),
     "agolgot": agolgot(), "bethsaida": bethsaida(),
