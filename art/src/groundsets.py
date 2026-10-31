@@ -32,6 +32,7 @@ FAMILIES = {
     "hills": ("7d7460", "827965", "8a8a5a"),       # Hills and mountains: dry dirt, scree, wind-flattened grass
     "meadow": ("66705a", "6b755e", "5c7a42"),    # Flower fields: salted pale green-grey, prismatic filaments
     "dunes": ("a5997f", "a89c83", "8c9592"),     # Salt desert: ivory wind ripples, cool grey cracks
+    "ruins": ("5e5b48", "625f4b", "5c6b4a"),     # Ruins: mossy shale earth, flakes of chrome and rubble
     "canyon": ("d0c6b8", "d5cbbd", "a4503c"),    # Desert canyons: chalk and salt, crimson in the cracks
 }
 
@@ -218,6 +219,22 @@ def hills(t, base, acc):
         t.put(t.rnd.randrange(16), t.rnd.randrange(24), shade(base, 1.22, 0.5))
 
 
+def ruins(t, base, acc):
+    """Ruins: "vine-swathed works ... above the clutches of shale" - dark shale earth, moss patches, a glint of old chrome."""
+    t.grain(base, 28, 0.94, 1.06)
+    for _ in range(t.rnd.randrange(2, 4)):                 # moss
+        x, y = t.rnd.randrange(1, 13), t.rnd.randrange(2, 21)
+        for dx, dy in ((0, 0), (1, 0), (2, 0), (1, 1), (0, 1)):
+            t.put(x + dx, y + dy, shade(acc, 0.95 + 0.05 * dx, 0.75))
+    for _ in range(t.rnd.randrange(1, 3)):                 # shale flakes
+        x, y = t.rnd.randrange(1, 13), t.rnd.randrange(2, 22)
+        for i in range(3):
+            t.put(x + i, y, shade(base, 1.1))
+            t.put(x + i, y + 1, shade(base, 0.86))
+    if t.rnd.random() < 0.35:                              # old chrome
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), shade(base, 1.3, 0.4))
+
+
 def canyon(t, base, acc):
     """Desert canyons: "the fissure-wounds have rotted to crimson and salt" - pale chalk and salt crust cracked into
     plates, crimson stain in the cracks (seen in the fan art's rust on chalk). Cracks start and end inside the tile."""
@@ -304,7 +321,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
+DRAW = {"ruins": ruins, "canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
 
 
 def tiles(family):

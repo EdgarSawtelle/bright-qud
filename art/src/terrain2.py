@@ -366,6 +366,95 @@ def _ironbars_texture(g, y0, y1, rnd, light, mid, dark):
                 g[y][x] = mid
 
 
+def _fulcrete_texture(g, y0, y1, rnd, light, mid, dark):
+    """Ruins: "carbon gravel ... an ocean of bitumen ... hair-line trenches along the basin" - dark mass, sparse gravel,
+    one hairline crack wandering across."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = mid
+    for _ in range(9):
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(0, 16)
+        g[y][x] = light
+    y = rnd.randrange(y0, max(y0 + 1, y1))
+    for x in range(16):
+        g[y][x] = dark
+        y = min(y1 - 1, max(y0, y + rnd.choice((0, 0, 1, -1))))
+
+
+def _vinefulcrete_texture(g, y0, y1, rnd, light, mid, dark):
+    """Surface ruins: the same fulcrete, "vine-swathed" - leafy strands hanging down it (fixed leaf greens)."""
+    _fulcrete_texture(g, y0, y1, rnd, light, mid, dark)
+    for _ in range(rnd.randrange(1, 3)):
+        x = rnd.randrange(16)
+        for y in range(y0, min(y1, y0 + rnd.randrange(6, 15))):
+            g[y][x % 16] = "h"
+            if y % 3 == 0:
+                g[y][(x + 1) % 16] = "g"
+            x += rnd.choice((0, 0, 1, -1))
+
+
+def _mudroot_texture(g, y0, y1, rnd, light, mid, dark):
+    """Ruins: "braids of fibrous plant veins enmesh compacted mud" - two or three thick root braids over mud."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = mid
+    for _ in range(3):
+        x = rnd.randrange(16)
+        for y in range(y0, y1):
+            g[y][x % 16] = light
+            g[y][(x + 1) % 16] = dark
+            x += rnd.choice((0, 1, -1))
+    for _ in range(4):
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(16)
+        g[y][x] = "6"                                          # brackish weep
+
+
+def _crysteel_texture(g, y0, y1, rnd, light, mid, dark):
+    """Baroque: "longwise infill plates of burnished crysteel are girdered by fulcrete beams"."""
+    for y in range(y0, y1):
+        r = (y - y0) % 8
+        for x in range(16):
+            g[y][x] = "6" if r == 7 or x in (0, 15) else (light if r == 0 else mid)
+    for y in range(y0, y1, 3):                                 # burnish lines along the plate
+        x = rnd.randrange(2, 9)
+        for i in range(rnd.randrange(3, 6)):
+            if g[y][x + i] == mid:
+                g[y][x + i] = dark
+
+
+def _starorchid_texture(g, y0, y1, rnd, light, mid, dark):
+    """Baroque: "outworld hard-shelled beings ... crushed together" - pale stone with fossil shells and magenta ribbons."""
+    for y in range(y0, y1):
+        for x in range(16):
+            g[y][x] = "4"
+    for _ in range(2):                                         # magenta ribbons of the shell
+        x, y = 0, rnd.randrange(y0, max(y0 + 1, y1))
+        for i in range(16):
+            g[y][x + i] = mid
+            if i % 3 == 0 and y + 1 < y1:
+                g[y + 1][x + i] = dark
+            y = min(y1 - 1, max(y0, y + rnd.choice((0, 1, -1))))
+    for _ in range(3):
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(0, 15)
+        g[y][x] = light
+        g[y][x + 1] = light
+
+
+def _tubing_texture(g, y0, y1, rnd, light, mid, dark):
+    """Baroque: "vacuum tubes slice through circuit topography" - brass tubes over dark board, glowing in the detail colour."""
+    for y in range(y0, y1):
+        for x in range(16):
+            f = x % 5
+            g[y][x] = dark if f == 4 else (mid if f == 3 else (light if f == 0 else "4"))
+    for y in range(y0 + 3, y1, 7):                             # junctions
+        for x in range(16):
+            g[y][x] = mid
+    for _ in range(3):
+        y, x = rnd.randrange(y0, max(y0 + 1, y1)), rnd.randrange(16)
+        if g[y][x] == dark:
+            g[y][x] = "5"
+
+
 def _shale_texture(g, y0, y1, rnd, light, mid, dark):
     """Canyons: "clay and quartz were dried and smashed into the red rock" - thin flaking plates, unevenly stacked."""
     y = y0
@@ -401,9 +490,12 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "tech": _tech_texture, "scale": _scale_texture,
              "cage": _cage_texture, "petal": _petal_texture, "marl": _marl_texture, "limestone": _limestone_texture,
              "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
-             "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture}
+             "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture,
+             "fulcrete": _fulcrete_texture, "vinefulcrete": _vinefulcrete_texture, "mudroot": _mudroot_texture, "crysteel": _crysteel_texture,
+             "starorchid": _starorchid_texture, "tubing": _tubing_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
-EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars"]
+EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars",
+                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants
