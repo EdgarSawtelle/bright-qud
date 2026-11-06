@@ -40,8 +40,10 @@ FAMILIES = {
     "basalt": ("37383c", "3b3c40", "6a6c70"),    # River Yonth: basalt chips
     "sponge": ("4a5548", "4e594c", "7a8a6a"),    # Lake Hinnom: spongebed, porous and damp
     "reef": ("1d3536", "233f40", "5f8c88"),      # Palladium Reef: dark teal, coral grit, palladium flecks (same colours as before)
-    "ward": ("3c4148", "40454c", "6e7a86"),      # Bethesda Susa wards: cold stone, dust and old tile
-    "rime": ("6f8896", "748d9b", "c6dbe2"),      # Bethesda Susa, cold strata: frost over stone
+    "ward": ("46525c", "4a5660", "7e9aa6"),      # Bethesda Susa wards: cold stone; the game paints every level below ground with blue dots
+    "rime": ("3a5666", "3f5b6b", "a8d0dc"),      # Bethesda Susa, cryobarrios: stone under ice, after the ice cave photo
+    "susa": ("ae643c", "b36940", "c8865a"),      # Bethesda Susa surface: rust terraces
+    "susagreen": ("64884a", "698d4e", "8aaa5e"),  # Bethesda Susa surface: the green valley
     "canyon": ("d0c6b8", "d5cbbd", "a4503c"),    # Desert canyons: chalk and salt, crimson in the cracks
 }
 
@@ -328,27 +330,50 @@ def reef(t, base, acc):
 
 
 def ward(t, base, acc):
-    """Bethesda Susa's wards: "the angleless architecture of Bethsaida's lair" - cold stone, fine dust, faint curved scratches."""
+    """Bethesda Susa's wards: "the angleless architecture of Bethsaida's lair" - cold stone, faint curved scratches, the game's pale dots."""
     t.grain(base, 26, 0.95, 1.05)
+    for _ in range(t.rnd.randrange(2, 5)):
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), tuple(round(base[i] + (acc[i] - base[i]) * .5) for i in range(3)) + (255,))
     for _ in range(t.rnd.randrange(1, 3)):
         x, y = t.rnd.randrange(1, 11), t.rnd.randrange(3, 20)
         for i in range(5):
             t.put(x + i, y + (i * i) // 8, shade(base, 1.1))
 
 
+def susa(t, base, acc):
+    """Bethesda Susa's rust terraces: thin ledges in close tones, like the cliffs in the fan art."""
+    t.grain(base, 28, 0.94, 1.06)
+    for _ in range(t.rnd.randrange(2, 4)):
+        x, y, n = t.rnd.randrange(0, 9), t.rnd.randrange(2, 22), t.rnd.randrange(4, 8)
+        for i in range(n):
+            t.put(x + i, y + (i // 3) % 2, shade(base, 1.12))
+            t.put(x + i, y + 1 + (i // 3) % 2, shade(base, 0.88))
+
+
+def susagreen(t, base, acc):
+    """The valley floor: short grass in close greens, a pale fleck here and there."""
+    t.grain(base, 34, 0.93, 1.07)
+    for _ in range(t.rnd.randrange(8, 13)):
+        x, y = t.rnd.randrange(16), t.rnd.randrange(1, 24)
+        c = shade(base, 0.86 if t.rnd.random() < .5 else 1.14)
+        t.put(x, y, c)
+        t.put(x, y - 1, c)
+    for _ in range(t.rnd.randrange(1, 4)):
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), acc)
+
+
 def rime(t, base, acc):
-    """Bethesda Susa's cold strata: frost feathers grown over the stone, all close to the ground colour."""
+    """Bethesda Susa's cryobarrios: thin frost grown over the stone, all close to the ground colour."""
     mix = lambda k: tuple(round(base[i] + (acc[i] - base[i]) * k) for i in range(3)) + (255,)
     t.grain(base, 24, 0.96, 1.04)
-    for _ in range(t.rnd.randrange(2, 4)):                 # a frost feather
+    for _ in range(t.rnd.randrange(1, 3)):                 # a frost feather
         x, y = t.rnd.randrange(2, 12), t.rnd.randrange(3, 20)
         for i in range(4):
-            t.put(x + i, y - i // 2, mix(0.32))
+            t.put(x + i, y - i // 2, mix(0.16))
             if i % 2:
-                t.put(x + i, y - i // 2 + 1, mix(0.2))
-                t.put(x + i - 1, y - i // 2 - 1, mix(0.2))
-    for _ in range(t.rnd.randrange(3, 6)):
-        t.put(t.rnd.randrange(16), t.rnd.randrange(24), mix(0.4))
+                t.put(x + i, y - i // 2 + 1, mix(0.1))
+    for _ in range(t.rnd.randrange(1, 4)):
+        t.put(t.rnd.randrange(16), t.rnd.randrange(24), mix(0.2))
 
 
 def canyon(t, base, acc):
@@ -437,7 +462,7 @@ def marsh(t, base, acc):
             t.put(x + dx, y + dy, shade(base, 0.86))
 
 
-DRAW = {"ward": ward, "rime": rime, "reef": reef, "sponge": sponge, "gravel": gravel, "basalt": gravel, "grove": grove, "tar": tar, "chute": chute, "ruins": ruins, "canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
+DRAW = {"ward": ward, "rime": rime, "susa": susa,  "susagreen": susagreen, "reef": reef, "sponge": sponge, "gravel": gravel, "basalt": gravel, "grove": grove, "tar": tar, "chute": chute, "ruins": ruins, "canyon": canyon, "salt": salt, "earth": earth, "rust": rust, "green": green, "teal": teal, "marsh": marsh, "redrock": rust, "redcave": cave, "rustwell": rustflake, "rustcave": bitumen, "jungle": green, "meadow": meadow, "deepjungle": deepjungle, "hills": hills, "dunes": dunes}
 
 
 def tiles(family):
@@ -450,6 +475,43 @@ def tiles(family):
     return out
 
 
+def corner_blend(a, b, corners, seed):
+    """Tile a meeting tile b along a soft curve. corners = (NW, NE, SE, SW), 1 where b lies, so neighbouring cells that share a corner
+    always meet: 16 masks give a border with no squares in it, its edge frayed into small tufts."""
+    rnd = random.Random(f"{seed}{corners}")
+    nw, ne, se, sw = corners
+    bend = rnd.uniform(.28, .46) * rnd.choice((-1, 1))      # bulges the edge between shared points, so straight runs curve
+    phase = rnd.choice((1, 2))
+    out = a.copy()
+    pa, pb = out.load(), b.load()
+    for y in range(24):
+        for x in range(16):
+            u, v = (x + .5) / 16, (y + .5) / 24
+            w = (nw * (1 - u) + ne * u) * (1 - v) + (sw * (1 - u) + se * u) * v
+            w += bend * math.sin(math.pi * u * phase) * math.sin(math.pi * v * phase)
+            if w + (rnd.random() - .5) * .22 > .5:
+                pa[x, y] = pb[x, y]
+    return out
+
+
+def solid(family, tile):
+    out = Image.new("RGBA", (W, H), hx(FAMILIES[family][0]) + (255,))
+    out.alpha_composite(tile)
+    return out
+
+
+def susa_edges():
+    """Bethesda Susa's rust meeting its green: 4 opaque tiles for each of the 14 mixed corner masks (NW 8, NE 4, SE 2, SW 1). Opaque
+    because family tiles are see-through over one flat cell colour, which would show a square."""
+    rust, green, out = tiles("susa"), tiles("susagreen"), {}
+    for mask in range(1, 15):
+        corners = tuple((mask >> b) & 1 for b in (3, 2, 1, 0))
+        for v in range(4):
+            i = (mask * 3 + v * 5) % COUNT
+            out[f"brightqudground/susaedge/{mask * 4 + v}"] = corner_blend(solid("susa", rust[i]), solid("susagreen", green[i]), corners, v)
+    return out
+
+
 def all_tiles():
     """{tile key: image} for the build: brightqudground/<family>/<n>."""
-    return {f"brightqudground/{fam}/{i}": im for fam in FAMILIES for i, im in enumerate(tiles(fam))}
+    return {**{f"brightqudground/{fam}/{i}": im for fam in FAMILIES for i, im in enumerate(tiles(fam))}, **susa_edges()}

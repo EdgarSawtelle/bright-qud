@@ -168,6 +168,18 @@ def _crystal_texture(g, y0, y1, rnd, light, mid, dark):
         g[rnd.randrange(y0, max(y0 + 1, y1))][rnd.randrange(0, 16)] = "w"
 
 
+def _thatch_texture(g, y0, y1, rnd, light, mid, dark):
+    """Thatched wall: "stripes of watervine and brinestalk straw are batched and angled to divert salt slag"."""
+    for y in range(y0, y1):
+        row = (y - y0) // 5
+        lean = 1 if row % 2 else -1
+        for x in range(16):
+            s = (x + (y - y0) * lean) % 4
+            g[y][x] = light if s == 0 else dark if s == 3 else mid
+            if (y - y0) % 5 == 4:
+                g[y][x] = dark
+
+
 def _bone_texture(g, y0, y1, rnd, light, mid, dark):
     """Stacked bones (light, knobbed ends) packed in dark matter."""
     for y in range(y0, y1):
@@ -584,10 +596,11 @@ MATERIALS = {"canvas": _canvas_texture, "rock": _rock_texture, "salt": _salt_tex
              "shale": _shale_texture, "sandstone": _sandstone_texture, "concrete": _concrete_texture,
              "stiltmarble": _stiltmarble_texture, "stiltpillar": _stiltpillar_texture, "ironbars": _ironbars_texture,
              "fulcrete": _fulcrete_texture, "vinefulcrete": _vinefulcrete_texture, "mudroot": _mudroot_texture, "crysteel": _crysteel_texture,
-             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture, "oolite": _oolite_texture, "gypsum": _gypsum_texture, "coralrag": _coralrag_texture, "ydglass": _ydglass_texture}
+             "starorchid": _starorchid_texture, "tubing": _tubing_texture, "verdigris": _verdigris_texture, "verdigris2": _verdigris2_texture, "oolite": _oolite_texture, "gypsum": _gypsum_texture, "coralrag": _coralrag_texture, "ydglass": _ydglass_texture, "thatch": _thatch_texture}
 # Materials drawn as 16 N/E/S/W wall variants but reached by a runtime swap (BrightQud.cs WallSwaps), not an alias.
 EXTRA_WALL_MATERIALS = ["cage", "petal", "marl", "limestone", "shale", "sandstone", "concrete", "stiltmarble", "stiltpillar", "ironbars",
-                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2", "gypsum", "coralrag", "ydglass"]
+                        "fulcrete", "vinefulcrete", "mudroot", "crysteel", "starorchid", "tubing", "verdigris", "verdigris2", "gypsum", "coralrag", "ydglass",
+                        "brick", "stone", "rock", "canvas", "metal", "thatch", "wood", "bone"]
 MATERIALS.update({"ornate_" + m: _ornate(m) for m in MOTIFS})
 
 # Wall families drawn through a runtime alias (Generated.WallAliases): the game's 256 mask variants

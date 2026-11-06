@@ -13,6 +13,8 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [*]Gentle idle animation (creature and tile animation have separate switches)
 [*]Zones with their own look: lavender crystal Moon Stair with a twinkling hexagon floor, lush mossy Rainbow Wood with tiny glowing mushrooms, Joppa's salt-spangled earth, Red Rock, Rust Wells, Kyakukya's cage-fungus houses, Grit Gate, Bey Lah's petal huts, flower fields, jungles, hills and mountains, the wind-rippled salt desert; calm, finely textured ground; small amounts of liquid drawn as thin trickles; warm and coloured light at night and in caves
 [*]Redrawn frogs (svardym), reptiles and Putus Templars
+[*]NEW in 0.23: desert canyons, the Six Day Stilt, ruins, Golgotha, the Asphalt mines, the banana grove, all five rivers, Lake Hinnom, Palladium Reef, the Yd Freehold and Bethesda Susa each have their own ground, walls and colours; village walls show their own material
+[*]After a body swap you're drawn as the body you're in
 [/list]
 
 [h2]Easier to read the map[/h2]
@@ -30,7 +32,6 @@ Bold outlines, saturated colours, readability first. [b]Gameplay is unchanged[/b
 [list]
 [*]Clearer fonts: Clear mono or Readable (Atkinson Hyperlegible)
 [*]Interface colours: Qud teal, Tan parchment (light), Amber, Rust, Violet, Slate
-[*]New in 0.23: desert canyons, the Six Day Stilt, ruins, Golgotha, the Asphalt mines, the banana grove, all five rivers, Lake Hinnom, Palladium Reef and the Yd Freehold each have their own ground, walls and colours.
 [*]Sprite sets: in Options > Mods, creatures, plants, items, furniture, walls and liquids can each go back to the game's own sprites (creatures keep the outline). Visible mutations on characters have their own switch.
 [*]Key stats at the top of look / hover descriptions (monster level, HP, AV/DV, attacks, mutations; item damage, armour, resistances)
 [*]Mutations and fight skills explained in one line each when you look at a creature (dangerous ones in red), plus its status (on fire, stunned...)

@@ -998,10 +998,18 @@ namespace BrightQud
                 bool memory = !Event.Visible || (int)Event.Lit <= 1;
                 Ground.Apply(__instance, Event, memory, out string under, out Color underColor, out Color underDetail,
                     out int style, out int mutations, out int frame, out bool isPlayer, out int hud);
-                if (isPlayer && Settings.PaperDoll && The.Player != null) Doll.Update(The.Player, __instance.Foreground);
-                string tile = isPlayer ? Settings.PlayerTile(__instance._Tile) : __instance._Tile;
-                if (!isPlayer && Ground.DollTarget != null && Settings.NpcDoll)
-                    tile = Doll.ForNpc(Ground.DollTarget, __instance._Tile, __instance.Foreground) ?? tile;
+                // Body swaps (Domination, Metempsychosis): the player look belongs to the body made at character
+                // creation. Another body shows its own sprite (a plain human one gets the NPC doll); the original
+                // body left behind while dominating keeps the player look.
+                var body = Ground.DollTarget;
+                bool own = isPlayer && Settings.OwnBody;
+                if (own && Settings.PaperDoll && The.Player != null) Doll.Update(The.Player, __instance.Foreground);
+                string tile = own ? Settings.PlayerTile(__instance._Tile) : __instance._Tile;
+                if (!own && body != null)
+                {
+                    if (!isPlayer && body.IsOriginalPlayerBody()) tile = Settings.PlayerTile(tile, true);
+                    else if (Settings.NpcDoll) tile = Doll.ForNpc(body, __instance._Tile, __instance.Foreground) ?? tile;
+                }
                 string virt = Recolor.Resolve(tile, __instance.Foreground, __instance.Detail, memory, under,
                     underColor, style, mutations, frame, hud, underDetail);
                 if (virt != null) __instance._Tile = virt;
@@ -1807,11 +1815,23 @@ namespace BrightQud
         public static bool NpcDoll { get { Refresh(); return npcDoll && spriteOn[SpriteSets.Creatures]; } }
 
         // The tile to draw for the player: worn gear (paper doll), the chosen look, else the game's tile.
-        public static string PlayerTile(string gameTile)
+        // Only for the body made at character creation, unless anyBody (the original body seen from outside).
+        public static string PlayerTile(string gameTile, bool anyBody = false)
         {
+            if (!anyBody && !OwnBody) return gameTile;
             if (PaperDoll && Doll.Current != null) return Doll.Current;
             string look = PlayerLook;
             return look != null && Recolor.Exists(look) ? look : gameTile;
+        }
+
+        // False after a body swap. No player yet (menus) counts as the own body.
+        public static bool OwnBody
+        {
+            get
+            {
+                var player = The.Player;
+                return player == null || player.IsOriginalPlayerBody();
+            }
         }
 
         public static bool IsPlayerTile(string tile)
@@ -1892,7 +1912,7 @@ namespace BrightQud
             }
             style = StyleOf(cell, e.Tile, out mutations, out bool creature, out isPlayer, out hud);
             XRL.World.GameObject top = lastTop;
-            if (creature && !isPlayer) DollTarget = top;
+            if (creature) DollTarget = top;
             if (memory) hud = 0;
             if (e.Tile != null && e.Tile.StartsWith("Tiles2/gas_", StringComparison.Ordinal)) GasColors(cell, ch);
             bool gameLiquids = Settings.GameSprites(SpriteSets.Liquids);
@@ -1958,6 +1978,15 @@ namespace BrightQud
                     else if (sk == 21) { ch.Foreground = GypsumGold; ch.Detail = GypsumShade; }
                     else if (sk == 22) { ch.Foreground = CoralRag; ch.Detail = CoralRagBite; }
                     else if (sk == 23 || sk == 24) { ch.Foreground = PalladiumSilver; ch.Detail = StrutCoral; }
+                    else if (sk == 28 && villageZone) { ch.Foreground = StiltMarble; ch.Detail = StiltMarbleVein; }
+                    else if (sk == 31) { ch.Foreground = VillageBrick; ch.Detail = VillageBrickShade; }
+                    else if (sk == 32) { ch.Foreground = VillageSlate; ch.Detail = VillageSlateShade; }
+                    else if (sk == 33) { ch.Foreground = VillageGranite; ch.Detail = VillageGraniteShade; }
+                    else if (sk == 34 || sk == 37) { ch.Foreground = Muted(ch.Foreground); ch.Detail = Muted(ch.Detail); }
+                    else if (sk == 35) { ch.Foreground = VillageMetal; ch.Detail = VillageMetalScorch; }
+                    else if (sk == 36) { ch.Foreground = VillageThatch; ch.Detail = VillageThatchShade; }
+                    else if (sk == 38) { ch.Foreground = VillageBone; ch.Detail = Muted(ch.Detail); }
+                    else if (sk == 39) { ch.Foreground = VillageFoamcrete; ch.Detail = VillageFoamShade; }
                     else if (sk == 25 || sk == 27)
                     {
                         // Slow breath, about 6 seconds, in six steps; the user wants this on, whatever "animated tiles" says.
@@ -1990,7 +2019,7 @@ namespace BrightQud
                     ch._Tile = FamilyTiles[1][Hash(cell.X, cell.Y) % 16];
                 }
                 else if (kind == KindFamily && bare)
-                    ch._Tile = FamilyTiles[zoneFamily][Hash(cell.X, cell.Y) % 16];
+                    ch._Tile = FamilyTile(cell.X, cell.Y);
                 else if (kind == KindReef && bare)
                     ch._Tile = FamilyTiles[FamilyReef][Hash(cell.X, cell.Y) % 16];
                 else if ((kind == KindFamily || kind == KindJoppa || kind == KindSalt) && top != null
@@ -2126,7 +2155,14 @@ namespace BrightQud
             // Gas is the top tile of its cell: without this steam or acid drifting over a textured floor wipes the floor.
             if (e.Tile != null && e.Tile.StartsWith("Tiles2/gas_", StringComparison.Ordinal) && ZoneKind(cell) == KindFamily)
             {
-                under = FamilyTiles[zoneFamily][Hash(cell.X, cell.Y) % 16];
+                under = FamilyTile(cell.X, cell.Y);
+                underColor = underDetail = Color.white;
+            }
+            // Bethesda Susa: the curved edge carries on under whatever stands on it; only cells it crosses need this.
+            if (under == null && top != null && zoneFamily == FamilySusa && susaCorners != null && ZoneKind(cell) == KindFamily
+                && SusaMask(cell.X, cell.Y) % 15 != 0)
+            {
+                under = FamilyTile(cell.X, cell.Y);
                 underColor = underDetail = Color.white;
             }
             // Struts are pipes with floor showing round them.
@@ -2357,12 +2393,15 @@ namespace BrightQud
             bool moon = zoneKind == KindMoon;
             // Salt desert ruins: the sand drifts inside, so their floor is the dune ground too.
             bool dunes = zoneKind == KindFamily && zoneFamily == FamilyDunes;
-            enclosed = moon || dunes || (underground && zoneKind == KindFamily) ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
+            // Bethesda Susa's ruins are roofless: the rust and the green run through them.
+            bool susa = zoneKind == KindFamily && zoneFamily == FamilySusa;
+            susaCorners = susa ? SusaCorners(zone) : null;
+            enclosed = moon || dunes || susa || (underground && zoneKind == KindFamily) ? new bool[zone.Width, zone.Height] : ComputeEnclosed(zone);
             outdoor = moon ? Marble(zone) : zoneKind == KindFungal ? Moss(zone)
                 : zoneKind == KindSalt ? Flat(zone, SaltDark, SaltLight)
                 : zoneKind == KindReef ? Flat(zone, ReefDark, ReefLight)
                 : zoneKind == KindJoppa ? Flat(zone, JoppaDark, JoppaLight)
-                : zoneKind == KindFamily ? (zoneFamily == FamilyJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], SunFleck)
+                : zoneKind == KindFamily ? (susa ? SusaGround(zone) : zoneFamily == FamilyJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], SunFleck)
                     : zoneFamily == FamilyDeepJungle ? Dappled(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily], PinPrick, 3f, 0.72f, 0.6f)
                     : Flat(zone, FamilyDark[zoneFamily], FamilyLight[zoneFamily])) : ComputeOutdoor(zone);
             ComputeLight(zone);
@@ -2390,15 +2429,22 @@ namespace BrightQud
         // (art/src/groundsets.py: low contrast, rich small detail) drawn on every bare cell.
         static int zoneFamily;
         static readonly string[] FamilyNames = { "salt", "earth", "rust", "green", "teal", "marsh", "redrock", "redcave",
-            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove", "gravel", "basalt", "sponge", "reef" };
+            "rustwell", "rustcave", "jungle", "meadow", "deepjungle", "hills", "dunes", "canyon", "ruins", "chute", "tar", "grove", "gravel", "basalt", "sponge", "reef",
+            "susa", "susagreen", "ward", "rime" };
         static readonly Color[] FamilyDark = { Hex("a2967e"), Hex("6e5c42"), Hex("8c4e36"), Hex("3d3a28"), Hex("1e2c2c"), Hex("4e5040"),
             Hex("9b3f2b"), Hex("3b2622"), Hex("874a33"), Hex("2f2723"), Hex("3a3022"), Hex("66705a"), Hex("2c2519"), Hex("7d7460"),
-            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026"), Hex("6c6856"), Hex("37383c"), Hex("4a5548"), Hex("1d3536") };
+            Hex("a5997f"), Hex("d0c6b8"), Hex("5e5b48"), Hex("3a2c23"), Hex("4c4843"), Hex("3a4026"), Hex("6c6856"), Hex("37383c"), Hex("4a5548"), Hex("1d3536"),
+            Hex("ae643c"), Hex("64884a"), Hex("46525c"), Hex("3a5666") };
         static readonly Color[] FamilyLight = { Hex("ab9f87"), Hex("756247"), Hex("93543a"), Hex("433f2b"), Hex("233232"), Hex("54564a"),
             Hex("a1452e"), Hex("412a25"), Hex("8d4f37"), Hex("352c27"), Hex("3f3427"), Hex("6b755e"), Hex("312a1d"), Hex("827965"),
-            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429"), Hex("706c5a"), Hex("3b3c40"), Hex("4e594c"), Hex("233f40") };   // dunes: two close ivories, wider steps showed as squares on the light sand
+            Hex("a89c83"), Hex("d5cbbd"), Hex("625f4b"), Hex("3f3026"), Hex("504c46"), Hex("3e4429"), Hex("706c5a"), Hex("3b3c40"), Hex("4e594c"), Hex("233f40"),
+            Hex("b36940"), Hex("698d4e"), Hex("4a5660"), Hex("3f5b6b") };   // dunes: two close ivories, wider steps showed as squares on the light sand
         // Salt desert: "the ivory sea's dunes are like waves frozen in place", cracked salt between them.
         const int FamilyDunes = 14;
+        // Bethesda Susa: rust terraces into a green valley on the surface (the fan art), then cold stone, then ice:
+        // the game paints every level below with cold dots and it gets colder with depth (BethesdaColdZone).
+        const int FamilySusa = 24, FamilySusaGreen = 25, FamilyWard = 26, FamilyRime = 27;
+        const int CryobarrioZ = 24, LastSusaZ = 25; // the Temple of the Rock (26) and the caves below keep their own look
         const int FamilyGravel = 20, FamilyBasalt = 21; // river banks
         const int FamilyReef = 23;    // tiles only: Palladium Reef stays KindReef
         const int FamilySponge = 22;  // Lake Hinnom's shore: "coral fingers poke out from the spongebed"
@@ -2420,6 +2466,57 @@ namespace BrightQud
         // Salt marsh water: silvery brackish grey-blue, as in real salt marshes (zone study 02).
         static readonly Color MarshWater = Hex("8fa6a8"), MarshWaterLight = Hex("c4d2d2");
         static readonly string[][] FamilyTiles = BuildFamilyTiles();
+
+        // Where green lies, at cell corners, from noise on world coordinates so zones meet. Tiles are chosen by their four
+        // corners (groundsets.susa_edges), so the edge between rust and green curves through cells and never shows a square.
+        static bool[,] susaCorners;
+        static readonly string[] SusaEdges = BuildTiles("brightqudground/susaedge/", 60);
+        const float SusaGreenAt = 0.5f;
+
+        static float Lattice(int x, int y) => (Hash(x + 7919, y + 104729) * 1103515245 + 12345 & 0x7fffffff) % 1000 / 1000f;
+
+        static float ValueNoise(float x, float y)
+        {
+            int ix = Mathf.FloorToInt(x), iy = Mathf.FloorToInt(y);
+            float u = x - ix, v = y - iy;
+            u = u * u * (3f - 2f * u);
+            v = v * v * (3f - 2f * v);
+            return Mathf.Lerp(Mathf.Lerp(Lattice(ix, iy), Lattice(ix + 1, iy), u), Mathf.Lerp(Lattice(ix, iy + 1), Lattice(ix + 1, iy + 1), u), v);
+        }
+
+        static bool[,] SusaCorners(Zone zone)
+        {
+            var c = new bool[zone.Width + 1, zone.Height + 1];
+            int ox = (zone.wX * 3 + zone.X) * zone.Width, oy = (zone.wY * 3 + zone.Y) * zone.Height;
+            for (int x = 0; x <= zone.Width; x++)
+                for (int y = 0; y <= zone.Height; y++)
+                    c[x, y] = (ValueNoise((ox + x) / 9f, (oy + y) / 6f) * 2f + ValueNoise((ox + x) / 4f, (oy + y) / 3f)) / 3f > SusaGreenAt;
+            return c;
+        }
+
+        static int SusaMask(int x, int y) => (susaCorners[x, y] ? 8 : 0) | (susaCorners[x + 1, y] ? 4 : 0)
+            | (susaCorners[x + 1, y + 1] ? 2 : 0) | (susaCorners[x, y + 1] ? 1 : 0);
+
+        static Color[,] SusaGround(Zone zone)
+        {
+            var result = new Color[zone.Width, zone.Height];
+            for (int x = 0; x < zone.Width; x++)
+                for (int y = 0; y < zone.Height; y++)
+                {
+                    int f = SusaMask(x, y) == 15 ? FamilySusaGreen : FamilySusa;
+                    result[x, y] = Color.Lerp(FamilyDark[f], FamilyLight[f], (Hash(x, y) % 5) / 4f);
+                }
+            return result;
+        }
+
+        // The family tile of a cell; only Bethesda Susa's surface varies by place.
+        static string FamilyTile(int x, int y)
+        {
+            int h = Hash(x, y);
+            if (zoneFamily != FamilySusa || susaCorners == null) return FamilyTiles[zoneFamily][h % 16];
+            int mask = SusaMask(x, y);
+            return mask == 0 ? FamilyTiles[FamilySusa][h % 16] : mask == 15 ? FamilyTiles[FamilySusaGreen][h % 16] : SusaEdges[mask * 4 + h % 4];
+        }
 
         static string[][] BuildFamilyTiles()
         {
@@ -2451,7 +2548,9 @@ namespace BrightQud
                     return FamilyRuins;
                 case "TerrainBaroqueRuins":
                     return FamilyDeepJungle;  // "rampant greenspread canopies a starburst of the Eaters' richest works"
-                case "TerrainBethesdaSusa": case "TerrainRustedArchway":
+                case "TerrainBethesdaSusa":
+                    return FamilySusa;
+                case "TerrainRustedArchway":
                     return 2;
                 case "TerrainJungle": case "TerrainKyakukya":
                     return FamilyJungle;
@@ -2520,6 +2619,11 @@ namespace BrightQud
                     {
                         // Red Rock: red-brown rubble; Rust Wells: bitumen; Grit Gate: carbon-black teal
                         zoneFamily = bp == "TerrainRedRock" ? FamilyRedCave : bp == "TerrainRustWell" ? FamilyRustCave : 4;
+                        return KindFamily;
+                    }
+                    if (bp == "TerrainBethesdaSusa" && zone.Z <= LastSusaZ)
+                    {
+                        zoneFamily = zone.Z >= CryobarrioZ ? FamilyRime : FamilyWard;
                         return KindFamily;
                     }
                     if (bp == "TerrainAsphaltMines" && zone.Z <= 29) // below it, lava instead of asphalt
@@ -2733,7 +2837,20 @@ namespace BrightQud
             BuildWallTiles("starorchid"), BuildWallTiles("tubing"), BuildWallTiles("tubing"), BuildWallTiles("vinefulcrete"),
             BuildWallTiles("verdigris"), BuildWallTiles("verdigris2"), BuildWallTiles("gypsum"), BuildWallTiles("coralrag"),
             BuildWallTiles("strut"), BuildWallTiles("strutcoral"),
-            BuildWallTiles("ydtube"), BuildWallTiles("ydtube2"), BuildWallTiles("ydpump") };
+            BuildWallTiles("ydtube"), BuildWallTiles("ydtube2"), BuildWallTiles("ydpump"),
+            BuildWallTiles("susa"), BuildWallTiles("susaward"), BuildWallTiles("susaice"),
+            BuildWallTiles("brick"), BuildWallTiles("stone"), BuildWallTiles("rock"), BuildWallTiles("canvas"), BuildWallTiles("metal"),
+            BuildWallTiles("thatch"), BuildWallTiles("wood"), BuildWallTiles("bone"), BuildWallTiles("concrete") };
+        // Generated villages: each wall style its own material, in calm colours. Canvas, plank hedges and bone keep the colours the
+        // village rolled from its region, pulled toward straw, because that colour is what tells one village from the next.
+        static readonly Color VillageBrick = Hex("a8644c"), VillageBrickShade = Hex("6a4436");
+        static readonly Color VillageSlate = Hex("8c969c"), VillageSlateShade = Hex("5a6268");
+        static readonly Color VillageGranite = Hex("6a7072"), VillageGraniteShade = Hex("3c4244");
+        static readonly Color VillageMetal = Hex("84908f"), VillageMetalScorch = Hex("8a5a3c");
+        static readonly Color VillageThatch = Hex("b49a62"), VillageThatchShade = Hex("7a6238");
+        static readonly Color VillageBone = Hex("c4bba4"), VillageFoamcrete = Hex("9aa4a0"), VillageFoamShade = Hex("6c7672");
+        static readonly Color VillageStraw = Hex("8a7c60");
+        static Color Muted(Color c) => Color.Lerp(c, VillageStraw, 0.5f);
         // Marl and limestone: the game's y/Y/K would glare white; soft chalk and glaucous grey-green instead.
         static readonly Color MarlChalk = Hex("b4ad9a"), MarlShade = Hex("7c7666");
         static readonly Color LimestoneGlaucous = Hex("8a9893"), LimestoneShade = Hex("55605c");
@@ -2768,7 +2885,9 @@ namespace BrightQud
         // 1 = Kyakukya mushroom flesh (cage fungus), 2 = Bey Lah petal-strewn brinestalk, 3 = marl (hills),
         // 4 = limestone (mountains), 5 = shale, 6 = sandstone (canyons, Red Rock), 7 = Stilt outer walls,
         // 8 = Stilt marble, 9 = Stilt columns, 10 = iron fence, 11 = fulcrete, 12 = ebon fulcrete, 13 = mudroot,
-        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum, 22 = coral rag, 23/24 = palladium struts bare / with coral, 25 = Yd glass pipes (set 26 with gold collars), 27 = their pumps;
+        // 14 = crysteel, 15 = star orchid marble, 16/17 = cold/hot machine walls, 19 = verdigris, 21 = gypsum, 22 = coral rag, 23/24 = palladium struts bare / with coral, 25 = Yd glass pipes (set 26 with gold collars), 27 = their pumps,
+        // 28 = marble: Bethesda Susa (sets 29, 30 below ground) and generated villages (set 8), elsewhere as it is;
+        // 31-39 = walls of generated villages only (VillageWall): brick, slate, granite, canvas, metal, thatch, planks, bone, foamcrete;
         // 0 = no swap.
         const int VineFulcrete = 18; // kind 11 in the surface ruins' tiles: "vine-swathed"
         static int SwapKind(string blueprint) =>
@@ -2785,7 +2904,31 @@ namespace BrightQud
             : blueprint.StartsWith("Coral and Palladium Strut", StringComparison.Ordinal) ? 24
             : blueprint.StartsWith("YdFreeholdGlassHydraulicPipe", StringComparison.Ordinal) ? 25
             : blueprint == "YdFreeholdFusionPumpingStation" ? 27
-            : blueprint == "YdFreeholdCrysteelPlatedWallWithPipes" ? 14 : 0;
+            : blueprint == "YdFreeholdCrysteelPlatedWallWithPipes" ? 14 : blueprint == "Marble" ? 28 : VillageWall(blueprint);
+
+        static int VillageWall(string blueprint)
+        {
+            switch (blueprint)
+            {
+                case "BrickWall": return 31;
+                case "Slate": return 32;
+                case "Granite": return 33;
+                case "CanvasWall": return 34;
+                case "MetalWall": return 35;
+                case "ThatchedWall": return 36;
+                case "BrinestalkWall": return 37;
+                case "BaseSedimentaryRock": return 38;
+                case "Foamcrete": return 39;
+            }
+            return 0;
+        }
+
+        // Generated villages are built by these zone builders, and the game keeps that record in the save. Joppa and the other
+        // fixed towns have their own maps, so they are not touched.
+        static bool villageZone;
+
+        static bool IsVillage(Zone zone) => zone.HasBuilder("Village") || zone.HasBuilder("VillageOutskirts") || zone.HasBuilder("VillageOver")
+            || zone.HasBuilder("VillageUnder") || zone.HasBuilder("VillageCoda");
 
         // Bare and overgrown struts are one lattice.
         static bool Joins(int a, int b) => a == b || (a >= 23 && a <= 24 && b >= 23 && b <= 24)
@@ -2855,6 +2998,8 @@ namespace BrightQud
             wallSwap = null;
             int w = zone.Width, h = zone.Height;
             int[,] kind = null;
+            bool susa = zoneKind == KindFamily && (zoneFamily == FamilySusa || zoneFamily == FamilyWard || zoneFamily == FamilyRime);
+            villageZone = zone.ZoneID != null && IsVillage(zone);
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
                 {
@@ -2863,7 +3008,7 @@ namespace BrightQud
                     for (int i = 0; i < c.Objects.Count; i++)
                     {
                         int k = SwapKind(c.Objects[i].Blueprint);
-                        if (k == 0) continue;
+                        if (k == 0 || k == 28 && !susa && !villageZone || k > 28 && !villageZone) continue;
                         kind = kind ?? new int[w, h];
                         kind[x, y] = k;
                         break;
@@ -2881,6 +3026,7 @@ namespace BrightQud
                     int s = y < h - 1 && Joins(kind[x, y + 1], k) ? 2 : 0, wv = x > 0 && Joins(kind[x - 1, y], k) ? 1 : 0;
                     bool vines = k == 11 && zoneKind == KindFamily && zoneFamily == FamilyRuins;
                     int set = vines ? VineFulcrete : k == 19 && Hash(x, y) % 2 == 0 ? 20 : k; // 20: other rust streaks
+                    if (k == 28) set = !susa ? 8 : zoneFamily == FamilySusa ? 28 : zoneFamily == FamilyWard ? 29 : 30;
                     int mask = n | e | s | wv;
                     if (k == 25)
                     {

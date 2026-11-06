@@ -378,6 +378,13 @@ def main():
         img, mask = B.render(rows, "terrain", fg="w", detail="c", with_mask=True)
         write(img, flat_name(k))
         write(mask, "BrightQudMask/" + flat_name(k))
+    # Bethesda Susa's marble, one set per depth (exact colours: an empty role mask, like the ground).
+    import susawall
+    for material, palette in (("susa", "surface"), ("susaward", "ward"), ("susaice", "ice")):
+        for suffix, _ in T2.alias_variants():
+            im = susawall.wall(suffix, palette)
+            write(im, flat_name(f"brightqudwall/{material}-{suffix}"))
+            write(Image.new("RGBA", im.size, (0, 0, 0, 0)), "BrightQudMask/" + flat_name(f"brightqudwall/{material}-{suffix}"))
     # Gas clouds (soft translucent puffs, 4 animation frames).
     for i in range(4):
         img, mask = FX.gas(i)

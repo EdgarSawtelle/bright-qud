@@ -54,6 +54,11 @@ characters have their own switch too.
   Kyakukya's houses are glossy cage-lattice fungus and Bey Lah's huts are petal-strewn brinestalk;
   hills and mountains get soft chalk marl and glaucous limestone walls; the salt desert is wind-rippled ivory with
   faint salt cracks, and a few drams of liquid show as a thin trickle, not a cell of water. Frogs, reptiles and Templars redrawn.
+- **More zones in 0.23**: desert canyons (white chalk, shale and sandstone), the Six Day Stilt (light
+  blue walls, white marble, carved friezes), ruins, Golgotha, the Asphalt mines, the banana grove, all
+  five rivers, Lake Hinnom, Palladium Reef, the Yd Freehold, Bethesda Susa (rust terraces, marble
+  arcades, iced marble below ground) and village walls in their own material.
+- **Body swaps**: after a body swap you're drawn as the body you're in; your old body keeps your look.
 
 ### Easier to read the map
 | Helper | What you see |
