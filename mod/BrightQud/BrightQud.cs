@@ -96,6 +96,7 @@ namespace BrightQud
         public const int StyleTall = 2;   // walk-through but blocks sight (trees...): outline only
         public const int StyleFlat = 3;   // floors, walls, liquids: colors only
         public const int StylePlain = 4;  // the game's own sprite, drawn as it is
+        public const int StyleDepth = 5;  // the game's sprite, brighter, lit top-left, shaded bottom-right, outlined
         public const int StyleProjectile = 9; // our tile in flight: no ground/drop shadow (it spins)
 
         static readonly object Lock = new object();
@@ -345,14 +346,22 @@ namespace BrightQud
             // A sprite set switched off in Options: our PNG took over the game's key, so the cell must be
             // taken over too, or the game would draw our PNG.
             string raw = RawKey(tile);
+            int set = SpriteSets.GroupOf(raw);
             bool gameArt = IsOurs(key) && !key.StartsWith("brightqud", StringComparison.Ordinal)
-                && Settings.GameSprites(SpriteSets.GroupOf(raw));
+                && Settings.GameSprites(set);
             if (!gameArt && key.StartsWith("brightqudwall/", StringComparison.Ordinal))
                 gameArt = raw != key && Settings.GameSprites(SpriteSets.Walls);
             if (gameArt)
             {
                 key = raw;
                 if (style == StyleNone) style = StylePlain;
+                // Creatures: Options "creature sprites" picks how the game's sprite is drawn.
+                if (set == SpriteSets.Creatures && style != StyleProjectile)
+                {
+                    string look = Settings.CreatureLook;
+                    if (look == Settings.LookGame) style = StylePlain;
+                    else if (look == Settings.LookDepth) style = StyleDepth;
+                }
             }
             bool ours = !gameArt && IsOurs(key);
             if (style == StyleProjectile && !ours && !gameArt) return null; // vanilla projectiles are fine as they are
@@ -613,6 +622,26 @@ namespace BrightQud
                     Color o = style == StyleTall ? px[src] * 0.45f : Ink;
                     o.a = 1f;
                     outp[y * w + x] = o;
+                }
+            return outp;
+        }
+
+        // Light and shade on a game sprite ("Game + depth"): edge pixels facing up/up-left are lifted 22%
+        // toward white, edge pixels facing down/down-right darkened to 68%. Same as the mockup's volume().
+        static Color[] Depth(Color[] px, int w, int h)
+        {
+            var outp = (Color[])px.Clone();
+            bool Solid(int x, int y) => x >= 0 && y >= 0 && x < w && y < h && px[y * w + x].a > 0.5f;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    if (!Solid(x, y)) continue;
+                    Color c = px[y * w + x];
+                    // Unity rows go bottom-up: "up" on screen is y + 1.
+                    if (!Solid(x - 1, y + 1) || !Solid(x, y + 1))
+                        outp[y * w + x] = new Color(c.r + (1f - c.r) * 0.22f, c.g + (1f - c.g) * 0.22f, c.b + (1f - c.b) * 0.22f, c.a);
+                    else if (!Solid(x + 1, y - 1) || !Solid(x, y - 1))
+                        outp[y * w + x] = new Color(c.r * 0.68f, c.g * 0.68f, c.b * 0.68f, c.a);
                 }
             return outp;
         }
@@ -885,6 +914,7 @@ namespace BrightQud
                 : altFrame ? Recolored(frameKey, req.Fg, req.Detail)
                 : !req.GameArt && IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
                 : req.Style == StylePlain ? Vanilla(req.Key, req.Fg, req.Detail, true)
+                : req.Style == StyleDepth ? Stylize(Depth(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt), 16, 24), 16, 24, StyleObject)
                 : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt), 16, 24, req.Style)
                 : Vanilla(req.Key, req.Fg, req.Detail);
             if (req.Key.StartsWith("liquids/", StringComparison.Ordinal) && !req.GameArt) ToneLiquid(px);
@@ -1675,7 +1705,7 @@ namespace BrightQud
         public const int None = 0, Creatures = 1, Plants = 2, Items = 3, Furniture = 4, Walls = 5, Liquids = 6;
         public static readonly string[] OptionIds =
         {
-            null, "OptionBrightQudSpritesCreatures", "OptionBrightQudSpritesPlants", "OptionBrightQudSpritesItems",
+            null, "OptionBrightQudCreatureLook", "OptionBrightQudSpritesPlants", "OptionBrightQudSpritesItems",
             "OptionBrightQudSpritesFurniture", "OptionBrightQudSpritesWalls", "OptionBrightQudSpritesLiquids"
         };
 
@@ -1706,6 +1736,9 @@ namespace BrightQud
         static bool paperDoll = true, npcDoll = true;
         static string playerLook = null, font = "Clear mono", abilityBar = "More", uiTheme = "Qud teal";
         static string lookStats = "With scanning";
+        // Creature sprites: "Bright Qud" (ours) or one of the game-sprite looks below.
+        public const string LookOurs = "Bright Qud", LookDepth = "Game + depth", LookOutline = "Game + outline", LookGame = "Game";
+        static string creatureLook = LookOurs;
         static bool showMutations = true;
         // Sprite sets (SpriteSets.Creatures...): true = our sprites, false = the game's.
         static readonly bool[] spriteOn = { true, true, true, true, true, true, true };
@@ -1740,7 +1773,16 @@ namespace BrightQud
                 bool changed = false;
                 for (int g = 1; g < spriteOn.Length; g++)
                 {
-                    bool on = XRL.UI.Options.GetOption(SpriteSets.OptionIds[g], "Yes").EqualsNoCase("Yes");
+                    bool on;
+                    if (g == SpriteSets.Creatures)
+                    {
+                        string cl = XRL.UI.Options.GetOption(SpriteSets.OptionIds[g], LookOurs);
+                        cl = cl == LookDepth || cl == LookOutline || cl == LookGame ? cl : LookOurs;
+                        if (cl != creatureLook) changed = true;
+                        creatureLook = cl;
+                        on = cl == LookOurs;
+                    }
+                    else on = XRL.UI.Options.GetOption(SpriteSets.OptionIds[g], "Yes").EqualsNoCase("Yes");
                     if (on != spriteOn[g]) changed = true;
                     spriteOn[g] = on;
                 }
@@ -1796,6 +1838,7 @@ namespace BrightQud
         public static bool ShowMutations { get { Refresh(); return showMutations; } }
         // True when this sprite set is switched off in Options and the game's sprites are wanted.
         public static bool GameSprites(int set) { Refresh(); return set != SpriteSets.None && !spriteOn[set]; }
+        public static string CreatureLook { get { Refresh(); return creatureLook; } }
         public static bool ExplainPowers { get { Refresh(); return explainPowers; } }
         public static bool QuestBanner { get { Refresh(); return questBanner; } }
         public static bool AbilityHelp { get { Refresh(); return abilityHelp; } }

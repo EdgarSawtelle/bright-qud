@@ -6,7 +6,7 @@
   <option ID="OptionBrightQudAnimation" DisplayText="Bright Qud: creature animation (bobbing, flapping wings)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudTileAnimation" DisplayText="Bright Qud: animated tiles (twinkles, glows, torch flicker; off by default)" Category="Mods" Type="Checkbox" Default="No"></option>
   <option ID="OptionBrightQudAutoStyle" DisplayText="Bright Qud: restyle tiles that aren't redrawn yet" Category="Mods" Type="Checkbox" Default="Yes"></option>
-  <option ID="OptionBrightQudSpritesCreatures" DisplayText="Bright Qud: new creature sprites (off = the game's sprites, with the outline)" Category="Mods" Type="Checkbox" Default="Yes"></option>
+  <option ID="OptionBrightQudCreatureLook" DisplayText="Bright Qud: creature sprites (Bright Qud = new sprites; Game + depth = the game's, brighter, with light, shade and outline; Game + outline; Game = untouched)" Category="Mods" Type="Combo" Values="Bright Qud,Game + depth,Game + outline,Game" Default="Bright Qud"></option>
   <option ID="OptionBrightQudSpritesPlants" DisplayText="Bright Qud: new plant and tree sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudSpritesItems" DisplayText="Bright Qud: new item sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
   <option ID="OptionBrightQudSpritesFurniture" DisplayText="Bright Qud: new furniture and statue sprites (off = the game's sprites)" Category="Mods" Type="Checkbox" Default="Yes"></option>
