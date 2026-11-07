@@ -9,7 +9,7 @@ Every helper below has its own switch in **Options → Mods**.
 
 **Prefer the game's sprites?** Creatures have four looks in Options → Mods (new in 0.23.16): Bright Qud's sprites,
 the game's sprites brighter with light, shade and outline ("Game + depth"), the game's sprites with the outline, or
-the game's sprites untouched. Plants, items, furniture, walls and liquids each have a switch that puts the game's own
+the game's sprites untouched. With the game's looks your character uses the sprite you picked at character creation, with visible mutations drawn in the game's style (0.23.17). Plants, items, furniture, walls and liquids each have a switch that puts the game's own
 sprites back (with the outline, if restyling is on). Visible mutations on characters have their own switch too.
 
 ![Joppa with Bright Qud](screenshots/joppa.png)

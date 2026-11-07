@@ -242,6 +242,23 @@ namespace BrightQud
             { "MultipleLegs", false },
         };
 
+        // Mutation parts for the game's own character sprites -> behind the body (true) or in front.
+        // Overlay texture key: "brightqudmutg/" + name.ToLower(). art/src/mutations_game.py.
+        public static readonly Dictionary<string, bool> GameMutations = new Dictionary<string, bool>
+        {
+            { "Wings", true },
+            { "Carapace", true },
+            { "Quills", true },
+            { "Stinger", true },
+            { "TwoHeaded", true },
+            { "MultipleArms", true },
+            { "MultipleLegs", true },
+            { "Horns", false },
+            { "Beak", false },
+            { "BurrowingClaws", false },
+            { "ThickFur", false },
+        };
+
         // Painted wall family prefix -> our material ("brightqudwall/<material>-<nesw>").
         public static readonly Dictionary<string, string> WallAliases = new Dictionary<string, string>
         {
