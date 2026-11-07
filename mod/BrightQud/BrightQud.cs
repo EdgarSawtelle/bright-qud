@@ -366,8 +366,7 @@ namespace BrightQud
             bool ours = !gameArt && IsOurs(key);
             if (style == StyleProjectile && !ours && !gameArt) return null; // vanilla projectiles are fine as they are
             if (ours && style != StyleProjectile) style = StyleNone; // hand-drawn tiles carry their own style
-            // Mutation parts: ours on our humanoid tiles, game-style parts on the game's humanoid sprites.
-            if (!(ours || gameArt && set == SpriteSets.Creatures) || !Generated.HumanoidKeys.Contains(key)) mutations = 0;
+            if (!ours || !Generated.HumanoidKeys.Contains(key)) mutations = 0;
             // Vanilla tiles are taken over to auto-style them or to compose them onto our terrain.
             if (!ours && underKey == null && style == StyleNone) return null;
             string virt = Prefix + key + "|" + Hex(fg) + "|" + Hex(detail) + (memory ? clearMemory ? "|mc" : "|m" : "")
@@ -656,34 +655,6 @@ namespace BrightQud
         static bool SameRgb(Color a, Color b) =>
             Mathf.Abs(a.r - b.r) < 0.01f && Mathf.Abs(a.g - b.g) < 0.01f && Mathf.Abs(a.b - b.b) < 0.01f;
 
-        // Visible mutations on the GAME's humanoid sprites (creature look Game / + outline / + depth): flat
-        // two-colour parts (brightqudmutg/<name>) in the sprite's own colours, behind or in front of the body,
-        // added before the outline/depth so the whole figure is styled together.
-        static Color[] WithGameMutations(Color[] px, Request req, Color fg, Color detail)
-        {
-            if (!req.GameArt || req.Mutations == 0 || px.Length != 16 * 24) return px;
-            for (int pass = 0; pass < 2; pass++) // 0 = behind the body, 1 = in front
-                for (int b = 0; b < MutationOrder.Length; b++)
-                {
-                    if ((req.Mutations & (1 << b)) == 0) continue;
-                    string name = MutationOrder[b];
-                    if (!Generated.GameMutations.TryGetValue(name, out bool behind) || behind != (pass == 0)) continue;
-                    string key = "brightqudmutg/" + name.ToLowerInvariant();
-                    if (!IsOurs(key)) continue;
-                    TileInfo t = Load(key);
-                    if (t.BasePixels.Length != px.Length) continue;
-                    for (int i = 0; i < px.Length; i++)
-                    {
-                        Color m = t.MaskPixels[i];
-                        if (m.a <= 0.5f) continue;
-                        Color c = m.r * 255f < 150f ? fg : detail;
-                        c.a = t.BasePixels[i].a;
-                        px[i] = behind ? Over(px[i], c) : Over(c, px[i]);
-                    }
-                }
-            return px;
-        }
-
         // Visible mutations on humanoid-kit tiles: skin tints, then overlays behind/in front of the body.
         static Color[] WithMutations(Color[] px, Request req)
         {
@@ -942,17 +913,15 @@ namespace BrightQud
                     p => Stylize(p, 16, 24, StyleObject))
                 : altFrame ? Recolored(frameKey, req.Fg, req.Detail)
                 : !req.GameArt && IsOurs(req.Key) ? Recolored(req.Key, req.Fg, req.Detail)
-                : req.Style == StylePlain ? WithGameMutations(Vanilla(req.Key, req.Fg, req.Detail, true), req, req.Fg, req.Detail)
-                : req.Style == StyleDepth ? Stylize(Depth(WithGameMutations(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt),
-                    req, Brighten(req.Fg), Brighten(req.Detail)), 16, 24), 16, 24, StyleObject)
-                : req.Style != StyleNone ? Stylize(WithGameMutations(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt),
-                    req, Brighten(req.Fg), Brighten(req.Detail)), 16, 24, req.Style)
+                : req.Style == StylePlain ? Vanilla(req.Key, req.Fg, req.Detail, true)
+                : req.Style == StyleDepth ? Stylize(Depth(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt), 16, 24), 16, 24, StyleObject)
+                : req.Style != StyleNone ? Stylize(Vanilla(req.Key, Brighten(req.Fg), Brighten(req.Detail), req.GameArt), 16, 24, req.Style)
                 : Vanilla(req.Key, req.Fg, req.Detail);
             if (req.Key.StartsWith("liquids/", StringComparison.Ordinal) && !req.GameArt) ToneLiquid(px);
             if (req.Style == StyleProjectile)
                 for (int i = 0; i < px.Length; i++)
                     if (px[i].a < 0.6f) px[i] = Color.clear; // drop the baked ground/drop shadow
-            if (req.Mutations != 0 && !req.GameArt) px = WithMutations(px, req);
+            if (req.Mutations != 0) px = WithMutations(px, req);
             if (req.Frame == 1 && !altFrame && px.Length == 16 * 24) px = Bob(px, 16, 24);
             if (req.Hud != 0 && px.Length == 16 * 24) DrawHud(px, req.Hud);
             if (req.UnderKey != null)
@@ -1893,8 +1862,6 @@ namespace BrightQud
         public static string PlayerTile(string gameTile, bool anyBody = false)
         {
             if (!anyBody && !OwnBody) return gameTile;
-            // Game creature looks: the sprite chosen at character creation (mutations are added on top).
-            if (CreatureLook != LookOurs) return gameTile;
             if (PaperDoll && Doll.Current != null) return Doll.Current;
             string look = PlayerLook;
             return look != null && Recolor.Exists(look) ? look : gameTile;

@@ -23,7 +23,6 @@ import effects as FX  # noqa: E402
 import kit as K  # noqa: E402
 import kit2 as K2  # noqa: E402
 import legend  # noqa: E402
-import mutations_game as MG  # noqa: E402
 import palette as P  # noqa: E402
 import terrain2 as T2  # noqa: E402
 import tiles as T  # noqa: E402
@@ -355,13 +354,6 @@ def main():
         k = "brightqudmut/" + name.lower()
         write(img, flat_name(k))
         write(mask, "BrightQudMask/" + flat_name(k))
-    # Mutation parts for the GAME's character sprites (creature look Game / + outline / + depth): flat
-    # two-colour, no outline (the runtime outlines the whole figure). art/src/mutations_game.py.
-    for name, grid in MG.SPRITES.items():
-        img, mask = B.render(grid, "terrain", fg="y", detail="K", with_mask=True)
-        k = "brightqudmutg/" + name.lower()
-        write(img, flat_name(k))
-        write(mask, "BrightQudMask/" + flat_name(k))
     # Paper doll layers (player built from worn gear, docs/PAPERDOLL_BRIEF.md): brightquddoll/<layer key>,
     # no outline/shadow (the runtime outlines the stacked figure). Chitin letters become roles 1-6 so the
     # runtime can give each character its own chitin pair.
@@ -559,7 +551,6 @@ def write_generated(built):
     groups = "\n".join(f'            {{ "{k}", {g} }},' for k, g in sorted(sprite_groups(set(built)).items()))
     muts = "\n".join(f'            {{ "{n}", {"true" if layer == "back" else "false"} }},'
                      for n, (layer, _) in K.MUTATIONS.items())
-    gmuts = "\n".join(f'            {{ "{n}", {"true" if n in MG.BEHIND else "false"} }},' for n in MG.SPRITES)
     tints = "\n".join(f'            {{ "{n}", new[] {{ "{hx(pal[a])}", "{hx(pal[b])}" }} }},'
                       for n, (a, b) in K.SKIN_TINTS.items())
     keys = "\n".join(f'            "{k}",' for k in humanoid)
@@ -582,13 +573,6 @@ namespace BrightQud
         public static readonly Dictionary<string, bool> Mutations = new Dictionary<string, bool>
         {{
 {muts}
-        }};
-
-        // Mutation parts for the game's own character sprites -> behind the body (true) or in front.
-        // Overlay texture key: "brightqudmutg/" + name.ToLower(). art/src/mutations_game.py.
-        public static readonly Dictionary<string, bool> GameMutations = new Dictionary<string, bool>
-        {{
-{gmuts}
         }};
 
         // Painted wall family prefix -> our material ("brightqudwall/<material>-<nesw>").
